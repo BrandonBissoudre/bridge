@@ -1,11 +1,20 @@
 // lib/cron/orchestrator.ts
 import { writeFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { extractFromFigma } from "../extractors/figma-rest.js";
-import { parseKBConfig } from "../config/kb-config.js";
+import {
+  extractComponentsFromFigma,
+  extractVariablesFromFigma,
+  extractTextStylesFromFigma,
+} from "../extractors/figma-rest.js";
+import { parseKBConfig, resolveFileKey } from "../config/kb-config.js";
 
 export interface CronOptions {
   configPath: string;
+}
+
+interface RegistryWrite {
+  registry: string;
+  fileKey: string;
 }
 
 export async function runCron(opts: CronOptions) {
@@ -14,31 +23,47 @@ export async function runCron(opts: CronOptions) {
   const token = process.env.FIGMA_TOKEN;
   if (!token) throw new Error("FIGMA_TOKEN env var is required");
 
-  const extract = await extractFromFigma({ fileKey: cfg.figmaFileKey, token });
-
   const regDir = path.join(cfg.kbPath, "knowledge-base", "registries");
   await mkdir(regDir, { recursive: true });
-  await writeFile(
-    path.join(regDir, "variables.json"),
-    JSON.stringify(extract.variables, null, 2) + "\n"
-  );
-  await writeFile(
-    path.join(regDir, "components.json"),
-    JSON.stringify(extract.components, null, 2) + "\n"
-  );
-  await writeFile(
-    path.join(regDir, "text-styles.json"),
-    JSON.stringify(extract.textStyles, null, 2) + "\n"
-  );
 
+  const writes: RegistryWrite[] = [];
+
+  // Components — resolve which file to fetch from (override → primary)
+  {
+    const fileKey = resolveFileKey(cfg, "components");
+    const reg = await extractComponentsFromFigma({ fileKey, token });
+    await writeFile(path.join(regDir, "components.json"), JSON.stringify(reg, null, 2) + "\n");
+    writes.push({ registry: "components.json", fileKey });
+  }
+
+  // Variables
+  {
+    const fileKey = resolveFileKey(cfg, "variables");
+    const reg = await extractVariablesFromFigma({ fileKey, token });
+    await writeFile(path.join(regDir, "variables.json"), JSON.stringify(reg, null, 2) + "\n");
+    writes.push({ registry: "variables.json", fileKey });
+  }
+
+  // Text styles
+  {
+    const fileKey = resolveFileKey(cfg, "textStyles");
+    const reg = await extractTextStylesFromFigma({ fileKey, token });
+    await writeFile(path.join(regDir, "text-styles.json"), JSON.stringify(reg, null, 2) + "\n");
+    writes.push({ registry: "text-styles.json", fileKey });
+  }
+
+  const reportLines = [
+    `# Bridge KB sync — ${cfg.dsName}`,
+    "",
+    "Registries refreshed from Figma:",
+    "",
+    ...writes.map((w) => `- \`${w.registry}\` (from \`${w.fileKey}\`)`),
+    "",
+  ];
   await mkdir(".bridge", { recursive: true });
-  await writeFile(
-    ".bridge/last-sync-report.md",
-    `# Bridge KB sync — ${cfg.dsName}\n\nKB registries refreshed from Figma.\n`,
-    "utf8"
-  );
+  await writeFile(".bridge/last-sync-report.md", reportLines.join("\n"), "utf8");
 
-  return { extracted: true, dsName: cfg.dsName };
+  return { extracted: true, dsName: cfg.dsName, writes };
 }
 
 const invokedPath = process.argv[1] ?? "";

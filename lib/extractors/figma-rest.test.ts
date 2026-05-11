@@ -2,7 +2,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { extractFromFigma } from "./figma-rest.js";
+import {
+  extractFromFigma,
+  extractComponentsFromFigma,
+  extractVariablesFromFigma,
+  extractTextStylesFromFigma,
+} from "./figma-rest.js";
 
 function mockFetch(responsesByUrl: Record<string, unknown>): typeof fetch {
   return (async (url: any) => {
@@ -17,6 +22,27 @@ function mockFetch(responsesByUrl: Record<string, unknown>): typeof fetch {
       },
     } as Response;
   }) as typeof fetch;
+}
+
+function recordingFetch(responsesByUrl: Record<string, unknown>): {
+  fetchImpl: typeof fetch;
+  urls: string[];
+} {
+  const urls: string[] = [];
+  const fetchImpl = (async (url: any) => {
+    const key = String(url);
+    urls.push(key);
+    const body = responsesByUrl[key];
+    if (!body) throw new Error(`unmocked url: ${key}`);
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return body;
+      },
+    } as Response;
+  }) as typeof fetch;
+  return { fetchImpl, urls };
 }
 
 test("extractFromFigma normalizes REST responses", async () => {
@@ -50,4 +76,52 @@ test("extractFromFigma normalizes REST responses", async () => {
 
 test("extractFromFigma throws on missing token", async () => {
   await assert.rejects(() => extractFromFigma({ fileKey: "x", token: "" }));
+});
+
+test("extractComponentsFromFigma only hits /components endpoint", async () => {
+  const FIX = path.resolve("test/fixtures/figma-rest");
+  const c = JSON.parse(await readFile(path.join(FIX, "components-response.json"), "utf8"));
+  const { fetchImpl, urls } = recordingFetch({
+    "https://api.figma.com/v1/files/FILEKEY/components": c,
+  });
+  const reg = await extractComponentsFromFigma({
+    fileKey: "FILEKEY",
+    token: "figd_test",
+    fetchImpl,
+  });
+  assert.equal(urls.length, 1);
+  assert.match(urls[0], /\/components$/);
+  assert.equal(reg.components.length, 1);
+});
+
+test("extractVariablesFromFigma only hits /variables/local endpoint", async () => {
+  const FIX = path.resolve("test/fixtures/figma-rest");
+  const v = JSON.parse(await readFile(path.join(FIX, "variables-response.json"), "utf8"));
+  const { fetchImpl, urls } = recordingFetch({
+    "https://api.figma.com/v1/files/FILEKEY/variables/local": v,
+  });
+  const reg = await extractVariablesFromFigma({
+    fileKey: "FILEKEY",
+    token: "figd_test",
+    fetchImpl,
+  });
+  assert.equal(urls.length, 1);
+  assert.match(urls[0], /\/variables\/local$/);
+  assert.equal(reg.variables.length, 1);
+});
+
+test("extractTextStylesFromFigma only hits /styles endpoint", async () => {
+  const FIX = path.resolve("test/fixtures/figma-rest");
+  const s = JSON.parse(await readFile(path.join(FIX, "styles-response.json"), "utf8"));
+  const { fetchImpl, urls } = recordingFetch({
+    "https://api.figma.com/v1/files/FILEKEY/styles": s,
+  });
+  const reg = await extractTextStylesFromFigma({
+    fileKey: "FILEKEY",
+    token: "figd_test",
+    fetchImpl,
+  });
+  assert.equal(urls.length, 1);
+  assert.match(urls[0], /\/styles$/);
+  assert.equal(reg.styles.length, 1);
 });

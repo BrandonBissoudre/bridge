@@ -2,6 +2,30 @@
 
 All notable changes to Bridge DS are documented here.
 
+## [6.1.0] — 2026-05-11
+
+Multi-file KB sync. The cron now supports a design system split across several Figma library files — common for teams that publish a "Foundations" library (variables + text styles) separately from a "Components" library.
+
+### Added
+
+- **`figmaFiles` config block** (optional) — per-category file key overrides. Categories: `components`, `variables`, `textStyles`. Any omitted key falls back to the top-level `figmaFileKey`.
+- **`resolveFileKey(cfg, category)` helper** in `lib/config/kb-config.ts` for consumers that need the same resolution logic.
+- **Per-category extractor functions** in `lib/extractors/figma-rest.ts`: `extractComponentsFromFigma`, `extractVariablesFromFigma`, `extractTextStylesFromFigma`. Each hits exactly one REST endpoint.
+- **Sync report now lists source file per registry** — `.bridge/last-sync-report.md` shows which Figma file each registry was extracted from.
+
+### Changed
+
+- **Cron orchestrator** routes per-registry instead of single-file. `extractFromFigma` is preserved as a convenience wrapper that calls the three per-category extractors in parallel against the same fileKey.
+- **`runCron` return value** now includes a `writes: { registry, fileKey }[]` array so consumers can audit which file fed each registry.
+
+### Backward compatibility
+
+Existing configs with only `figmaFileKey` work unchanged — `figmaFiles` defaults to `{}` and every category falls back to the primary key. No migration needed.
+
+### Scope note
+
+Asset registries (`icons.json`, `logos.json`, `illustrations.json`) remain outside the cron because their schema is consumer-specific (no upstream contract). Teams using assets keep refreshing them manually via the `extracting-design-system` skill.
+
 ## [6.0.0] — 2026-04-17
 
 Deliberate cleanup release. Cuts the unfulfilled docs subsystem, reframes cron as a KB-freshness mechanism, and tightens skills with superpowers-style discipline patterns. See [BREAKING.md](BREAKING.md) for the migration guide and [docs/v6-cleanup-audit.md](docs/v6-cleanup-audit.md) for the full audit reasoning.

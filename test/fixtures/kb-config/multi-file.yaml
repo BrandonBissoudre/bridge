@@ -1,0 +1,7 @@
+dsName: "Spectra"
+tagline: "Multi-file DS"
+figmaFileKey: "COMPONENTS_FILE"
+figmaFiles:
+  variables: "FOUNDATIONS_FILE"
+  textStyles: "FOUNDATIONS_FILE"
+kbPath: "bridge-ds"

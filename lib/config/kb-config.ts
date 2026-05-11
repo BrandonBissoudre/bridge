@@ -8,15 +8,34 @@ const CronCfg = z.object({
   autoMergeIfTrivial: z.boolean().default(false),
 });
 
+// Per-category Figma file overrides. Each entry is optional; absent entries
+// fall back to the top-level `figmaFileKey`. Use this when a design system is
+// split across multiple Figma libraries — e.g. components in one file,
+// variables and text styles in a "Foundations" file.
+const FigmaFilesCfg = z
+  .object({
+    components: z.string().optional(),
+    variables: z.string().optional(),
+    textStyles: z.string().optional(),
+  })
+  .default({});
+
 export const KBConfigSchema = z.object({
   dsName: z.string().min(1),
   tagline: z.string().optional(),
   figmaFileKey: z.string().min(1),
+  figmaFiles: FigmaFilesCfg,
   kbPath: z.string().default("bridge-ds"),
   cron: CronCfg.default({}),
 });
 
 export type KBConfig = z.infer<typeof KBConfigSchema>;
+
+export type RegistryCategory = "components" | "variables" | "textStyles";
+
+export function resolveFileKey(cfg: KBConfig, category: RegistryCategory): string {
+  return cfg.figmaFiles[category] ?? cfg.figmaFileKey;
+}
 
 export function parseKBConfig(raw: string): KBConfig {
   // JSON_SCHEMA rejects custom YAML tags (e.g. `!!js/function`) that could

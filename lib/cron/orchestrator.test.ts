@@ -85,3 +85,115 @@ test("runCron integration: MCP-free end-to-end on fake fetch", async () => {
     else delete process.env.FIGMA_TOKEN;
   }
 });
+
+test("runCron multi-file: fetches each registry from its configured fileKey", async () => {
+  // Verify per-category file routing: components from one file, variables and
+  // text styles from another. This is the spectra-studio case (DS split across
+  // SDS-Components and SDS-Foundations Figma libraries).
+  const originalFetch = global.fetch;
+  const originalToken = process.env.FIGMA_TOKEN;
+  const originalCwd = process.cwd();
+  const dir = await mkdtemp(path.join(tmpdir(), "bridge-cron-multi-"));
+
+  const requestedUrls: string[] = [];
+
+  global.fetch = (async (url: unknown) => {
+    const u = String(url);
+    requestedUrls.push(u);
+
+    if (u === "https://api.figma.com/v1/files/COMPONENTS_FILE/components") {
+      return new Response(
+        JSON.stringify({ meta: { components: [{ key: "C1", name: "Button" }] } }),
+        { status: 200 }
+      );
+    }
+    if (u === "https://api.figma.com/v1/files/FOUNDATIONS_FILE/variables/local") {
+      return new Response(
+        JSON.stringify({
+          meta: {
+            variableCollections: { C: { id: "C", modes: [{ modeId: "m", name: "light" }] } },
+            variables: {
+              V: {
+                key: "VAR1",
+                name: "color/bg/primary",
+                variableCollectionId: "C",
+                resolvedType: "COLOR",
+                valuesByMode: { m: { r: 1, g: 1, b: 1, a: 1 } },
+              },
+            },
+          },
+        }),
+        { status: 200 }
+      );
+    }
+    if (u === "https://api.figma.com/v1/files/FOUNDATIONS_FILE/styles") {
+      return new Response(
+        JSON.stringify({
+          meta: { styles: [{ key: "S1", name: "label/md", style_type: "TEXT" }] },
+        }),
+        { status: 200 }
+      );
+    }
+    // Any other URL would mean we're fetching from the wrong file — fail loud.
+    if (
+      u.includes("COMPONENTS_FILE/variables") ||
+      u.includes("COMPONENTS_FILE/styles") ||
+      u.includes("FOUNDATIONS_FILE/components")
+    ) {
+      throw new Error(`unexpected cross-file fetch: ${u}`);
+    }
+    throw new Error(`unmocked fetch: ${u}`);
+  }) as typeof fetch;
+
+  try {
+    process.env.FIGMA_TOKEN = "dummy";
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      path.join(dir, "docs.config.yaml"),
+      [
+        `dsName: "MultiDS"`,
+        `figmaFileKey: "COMPONENTS_FILE"`,
+        `figmaFiles:`,
+        `  variables: "FOUNDATIONS_FILE"`,
+        `  textStyles: "FOUNDATIONS_FILE"`,
+        `kbPath: "kb"`,
+        ``,
+      ].join("\n")
+    );
+    process.chdir(dir);
+    const report = await runCron({ configPath: "docs.config.yaml" });
+
+    // Each registry came from the file we declared in config.
+    const findWrite = (name: string) => report.writes.find((w) => w.registry === name);
+    assert.equal(findWrite("components.json")?.fileKey, "COMPONENTS_FILE");
+    assert.equal(findWrite("variables.json")?.fileKey, "FOUNDATIONS_FILE");
+    assert.equal(findWrite("text-styles.json")?.fileKey, "FOUNDATIONS_FILE");
+
+    // And the registry contents reflect the right source.
+    const compsRaw = await readFile(
+      path.join(dir, "kb/knowledge-base/registries/components.json"),
+      "utf8"
+    );
+    assert.match(compsRaw, /Button/);
+    const varsRaw = await readFile(
+      path.join(dir, "kb/knowledge-base/registries/variables.json"),
+      "utf8"
+    );
+    assert.match(varsRaw, /color\/bg\/primary/);
+    const stylesRaw = await readFile(
+      path.join(dir, "kb/knowledge-base/registries/text-styles.json"),
+      "utf8"
+    );
+    assert.match(stylesRaw, /label\/md/);
+
+    // Sync report names each source file.
+    const body = await readFile(path.join(dir, ".bridge/last-sync-report.md"), "utf8");
+    assert.match(body, /components\.json.*COMPONENTS_FILE/);
+    assert.match(body, /variables\.json.*FOUNDATIONS_FILE/);
+  } finally {
+    process.chdir(originalCwd);
+    global.fetch = originalFetch;
+    if (originalToken !== undefined) process.env.FIGMA_TOKEN = originalToken;
+    else delete process.env.FIGMA_TOKEN;
+  }
+});

@@ -88,7 +88,9 @@ function categoryFromPage(page: string | undefined): Category {
   return "layout";
 }
 
-export async function extractFromFigma(opts: FigmaExtractOptions): Promise<FigmaExtractResult> {
+export async function extractVariablesFromFigma(
+  opts: FigmaExtractOptions
+): Promise<VariableRegistry> {
   if (!opts.token) throw new Error("FIGMA_TOKEN is required");
   const f = opts.fetchImpl ?? fetch;
   const ts = new Date().toISOString();
@@ -124,6 +126,16 @@ export async function extractFromFigma(opts: FigmaExtractOptions): Promise<Figma
     };
   });
 
+  return { version: 1, generatedAt: ts, variables };
+}
+
+export async function extractComponentsFromFigma(
+  opts: FigmaExtractOptions
+): Promise<ComponentRegistry> {
+  if (!opts.token) throw new Error("FIGMA_TOKEN is required");
+  const f = opts.fetchImpl ?? fetch;
+  const ts = new Date().toISOString();
+
   const compBody = await fget<FigmaComponentsResponse>(
     `${BASE}/files/${opts.fileKey}/components`,
     opts.token,
@@ -139,6 +151,16 @@ export async function extractFromFigma(opts: FigmaExtractOptions): Promise<Figma
     properties: [],
     description: c.description,
   }));
+
+  return { version: 1, generatedAt: ts, components };
+}
+
+export async function extractTextStylesFromFigma(
+  opts: FigmaExtractOptions
+): Promise<TextStyleRegistry> {
+  if (!opts.token) throw new Error("FIGMA_TOKEN is required");
+  const f = opts.fetchImpl ?? fetch;
+  const ts = new Date().toISOString();
 
   const stylesBody = await fget<FigmaStylesResponse>(
     `${BASE}/files/${opts.fileKey}/styles`,
@@ -156,9 +178,14 @@ export async function extractFromFigma(opts: FigmaExtractOptions): Promise<Figma
     lineHeight: 20,
   }));
 
-  return {
-    variables: { version: 1, generatedAt: ts, variables },
-    components: { version: 1, generatedAt: ts, components },
-    textStyles: { version: 1, generatedAt: ts, styles: textStyles },
-  };
+  return { version: 1, generatedAt: ts, styles: textStyles };
+}
+
+export async function extractFromFigma(opts: FigmaExtractOptions): Promise<FigmaExtractResult> {
+  const [variables, components, textStyles] = await Promise.all([
+    extractVariablesFromFigma(opts),
+    extractComponentsFromFigma(opts),
+    extractTextStylesFromFigma(opts),
+  ]);
+  return { variables, components, textStyles };
 }
