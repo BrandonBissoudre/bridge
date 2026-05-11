@@ -2,6 +2,18 @@
 
 All notable changes to Bridge DS are documented here.
 
+## [6.2.1] — 2026-05-11
+
+Hotfix on top of 6.2.0: dedupe variants against component-set children.
+
+### Fixed
+
+- **Variant instances were no longer being filtered out.** The Figma REST `/v1/files/{key}/components` endpoint does not return a `componentSetId` field (despite what other docs and SDKs suggest), so the v6.2.0 filter `!c.component_set_id` silently kept every variant row. A library with 60 SETs averaging 20 variants each would balloon the registry to ~1200 rows, all named in Figma's `variant=primary, size=medium` form. v6.2.1 dedupes by node ID instead: it collects every child ID returned by the SET `/nodes` fetches and drops any `/components` row whose `node_id` is in that set. The output now matches the MCP path: one row per published COMPONENT_SET, one row per genuine standalone COMPONENT.
+
+### Confirmed
+
+- The REST `/components` endpoint response fields, verified against a live Figma file: `key, file_key, node_id, thumbnail_url, name, description, description_rt, created_at, updated_at, containing_frame, user`. No `componentSetId`, no `component_set_id`. The deduplication has to come from elsewhere.
+
 ## [6.2.0] — 2026-05-11
 
 The REST extractor now produces a metadata-complete `components.json` matching what the MCP path emits. Variant counts and component-property definitions (BOOLEAN / TEXT / INSTANCE_SWAP / VARIANT) are populated from Figma, so the compiler's variant validator works against KBs that were refreshed by the cron — previously, REST-extracted KBs had empty `properties` and the validator silently accepted every variant, masking authoring errors.

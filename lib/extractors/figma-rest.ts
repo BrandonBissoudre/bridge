@@ -50,7 +50,6 @@ interface FigmaComponent {
   key: string;
   name: string;
   node_id?: string;
-  component_set_id?: string;
   description?: string;
   containing_frame?: { pageName?: string };
 }
@@ -229,23 +228,33 @@ export async function extractComponentsFromFigma(
   const f = opts.fetchImpl ?? fetch;
   const ts = new Date().toISOString();
 
-  // Pass 1: list standalone components and component sets in parallel.
-  // The /components endpoint includes every component (including variant
-  // instances inside sets); we filter those out via component_set_id.
+  // Pass 1: list components and component sets in parallel. /components
+  // returns every variant instance inside a SET as a separate entry — the
+  // Figma REST API does not expose a `componentSetId` field, so we cannot
+  // filter on that. We deduplicate against the SET children list in pass 3.
   const [compBody, setBody] = await Promise.all([
     fget<FigmaComponentsResponse>(`${BASE}/files/${opts.fileKey}/components`, opts.token, f),
     fget<FigmaComponentSetsResponse>(`${BASE}/files/${opts.fileKey}/component_sets`, opts.token, f),
   ]);
-  const standaloneComps = (compBody.meta?.components ?? []).filter((c) => !c.component_set_id);
+  const allComponents = compBody.meta?.components ?? [];
   const componentSets = setBody.meta?.component_sets ?? [];
 
   // Pass 2: batch-fetch rich node data for every component-set ID so we can
-  // read componentPropertyDefinitions and count variants. Standalone
-  // components don't carry property defs, so we skip them here.
+  // read componentPropertyDefinitions, count variants, AND collect the
+  // variant node IDs for the dedup pass.
   const setNodeIds = componentSets.map((s) => s.node_id).filter((id): id is string => !!id);
   const nodeDocs = setNodeIds.length
     ? await fetchNodes(opts.fileKey, setNodeIds, opts.token, f)
     : {};
+
+  // Pass 3: build the set of node IDs that belong to a COMPONENT_SET. Any
+  // /components entry whose node_id is in this set is a variant instance,
+  // not a standalone component — drop it.
+  const variantNodeIds = new Set<string>();
+  for (const doc of Object.values(nodeDocs)) {
+    for (const child of doc.children ?? []) variantNodeIds.add(child.id);
+  }
+  const standaloneComps = allComponents.filter((c) => !c.node_id || !variantNodeIds.has(c.node_id));
 
   // Emit the on-disk shape the compiler actually consumes — `properties` as a
   // record of string-encoded types, `variants` as the variant count, the

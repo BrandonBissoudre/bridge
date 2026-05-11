@@ -122,6 +122,87 @@ test("extractComponentsFromFigma fetches components + component_sets + /nodes fo
   assert.equal(reg.components.length, 2);
 });
 
+test("extractComponentsFromFigma deduplicates variants against /component_sets children", async () => {
+  // The Figma /components endpoint returns every variant inside a SET as a
+  // standalone entry (and does NOT include a componentSetId field). We must
+  // dedupe by checking each /components node_id against the children list
+  // returned by /nodes for each SET. Otherwise the KB inflates 20x with
+  // variant rows.
+  const { fetchImpl } = recordingFetch({
+    "https://api.figma.com/v1/files/FILEKEY/components": {
+      meta: {
+        components: [
+          {
+            key: "VARIANT_KEY_1",
+            name: "variant=primary, size=medium",
+            node_id: "1:101",
+            containing_frame: { pageName: "Actions" },
+          },
+          {
+            key: "VARIANT_KEY_2",
+            name: "variant=secondary, size=large",
+            node_id: "1:102",
+            containing_frame: { pageName: "Actions" },
+          },
+          {
+            key: "STANDALONE_KEY",
+            name: "Divider",
+            node_id: "9:9",
+            containing_frame: { pageName: "Layout" },
+          },
+        ],
+      },
+    },
+    "https://api.figma.com/v1/files/FILEKEY/component_sets": {
+      meta: {
+        component_sets: [
+          {
+            key: "SETKEY_BTN",
+            name: "Button",
+            node_id: "1:100",
+            containing_frame: { pageName: "Actions" },
+          },
+        ],
+      },
+    },
+    "https://api.figma.com/v1/files/FILEKEY/nodes?ids=1%3A100&depth=1": {
+      nodes: {
+        "1:100": {
+          document: {
+            id: "1:100",
+            type: "COMPONENT_SET",
+            name: "Button",
+            children: [
+              { id: "1:101", type: "COMPONENT" },
+              { id: "1:102", type: "COMPONENT" },
+            ],
+            componentPropertyDefinitions: {
+              variant: { type: "VARIANT", variantOptions: ["primary", "secondary"] },
+              size: { type: "VARIANT", variantOptions: ["medium", "large"] },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const reg = await extractComponentsFromFigma({
+    fileKey: "FILEKEY",
+    token: "figd_test",
+    fetchImpl,
+  });
+
+  // Should be exactly 2: the Button SET + the standalone Divider. The two
+  // variant rows (1:101 and 1:102) are filtered out because they appear in
+  // the SET's children list.
+  const comps = reg.components as unknown as Array<Record<string, any>>;
+  assert.equal(comps.length, 2);
+  assert.ok(comps.find((c) => c.name === "Button" && c.type === "COMPONENT_SET"));
+  assert.ok(comps.find((c) => c.name === "Divider" && c.type === "COMPONENT"));
+  assert.ok(!comps.find((c) => c.name.includes("variant=primary")));
+  assert.ok(!comps.find((c) => c.name.includes("variant=secondary")));
+});
+
 test("extractComponentsFromFigma skips the /nodes call when no component sets exist", async () => {
   // Files with only standalone components shouldn't pay the cost of a /nodes
   // request — verify that the extractor's 2-pass logic short-circuits cleanly.

@@ -7,7 +7,6 @@
         "key": "COMPKEY_BTN_PRIMARY",
         "file_key": "FILEKEY",
         "node_id": "1:101",
-        "component_set_id": "1:100",
         "name": "variant=primary, size=medium",
         "description": "",
         "containing_frame": { "pageName": "Actions" }
