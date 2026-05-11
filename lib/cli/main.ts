@@ -4,7 +4,7 @@ import { extractHeadless } from "./extract.js";
 import { runCron } from "../cron/orchestrator.js";
 import { migrate } from "./migrate.js";
 
-export const VERSION = "6.1.0";
+export const VERSION = "6.1.1";
 
 function printHelp() {
   console.log(`

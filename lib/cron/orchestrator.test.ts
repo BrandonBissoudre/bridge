@@ -86,6 +86,74 @@ test("runCron integration: MCP-free end-to-end on fake fetch", async () => {
   }
 });
 
+test("runCron: skips variables write on 403 instead of failing the whole run", async () => {
+  // Non-Enterprise Figma plans get 403 on /variables/local. The cron must
+  // continue with components + text-styles and leave variables.json
+  // untouched, so manual MCP refreshes remain authoritative.
+  const originalFetch = global.fetch;
+  const originalToken = process.env.FIGMA_TOKEN;
+  const originalCwd = process.cwd();
+  const dir = await mkdtemp(path.join(tmpdir(), "bridge-cron-403-"));
+
+  global.fetch = (async (url: unknown) => {
+    const u = String(url);
+    if (u.endsWith("/variables/local")) {
+      return new Response(JSON.stringify({}), { status: 403 });
+    }
+    if (u.endsWith("/components")) {
+      return new Response(JSON.stringify({ meta: { components: [] } }), { status: 200 });
+    }
+    if (u.endsWith("/styles")) {
+      return new Response(JSON.stringify({ meta: { styles: [] } }), { status: 200 });
+    }
+    throw new Error(`unmocked fetch: ${u}`);
+  }) as typeof fetch;
+
+  try {
+    process.env.FIGMA_TOKEN = "dummy";
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      path.join(dir, "docs.config.yaml"),
+      `dsName: "T"\nfigmaFileKey: "K"\nkbPath: "kb"\n`
+    );
+    // Pre-seed an existing variables.json so we can check it survives.
+    await mkdir(path.join(dir, "kb/knowledge-base/registries"), { recursive: true });
+    const preExistingVars =
+      '{"version":1,"generatedAt":"old","variables":[{"key":"PRESERVED","name":"x","resolvedType":"COLOR","valuesByMode":{}}]}\n';
+    await writeFile(path.join(dir, "kb/knowledge-base/registries/variables.json"), preExistingVars);
+
+    process.chdir(dir);
+    const report = await runCron({ configPath: "docs.config.yaml" });
+
+    // Cron didn't crash; the other two registries are present in writes.
+    assert.equal(report.extracted, true);
+    assert.equal(report.writes.length, 2);
+    assert.ok(report.writes.find((w) => w.registry === "components.json"));
+    assert.ok(report.writes.find((w) => w.registry === "text-styles.json"));
+    // variables.json is in skips, not writes.
+    assert.equal(report.skips.length, 1);
+    assert.equal(report.skips[0].registry, "variables.json");
+    assert.match(report.skips[0].reason, /403/);
+
+    // The pre-existing variables.json was preserved verbatim.
+    const stillThere = await readFile(
+      path.join(dir, "kb/knowledge-base/registries/variables.json"),
+      "utf8"
+    );
+    assert.equal(stillThere, preExistingVars);
+
+    // The sync report mentions the skip.
+    const body = await readFile(path.join(dir, ".bridge/last-sync-report.md"), "utf8");
+    assert.match(body, /Skipped/);
+    assert.match(body, /variables\.json/);
+  } finally {
+    process.chdir(originalCwd);
+    global.fetch = originalFetch;
+    if (originalToken !== undefined) process.env.FIGMA_TOKEN = originalToken;
+    else delete process.env.FIGMA_TOKEN;
+  }
+});
+
 test("runCron multi-file: fetches each registry from its configured fileKey", async () => {
   // Verify per-category file routing: components from one file, variables and
   // text styles from another. This is the spectra-studio case (DS split across

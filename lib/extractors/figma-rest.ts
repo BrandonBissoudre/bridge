@@ -75,6 +75,19 @@ async function fget<T>(url: string, token: string, f: typeof fetch = fetch): Pro
   return (await res.json()) as T;
 }
 
+/** Sentinel thrown when the variables endpoint is not available for the
+ * token's plan tier. The Figma `/variables/local` REST endpoint is
+ * Enterprise-only — non-Enterprise tokens get a 403. Callers should treat
+ * this as "variables unavailable" rather than a hard error. */
+export class VariablesEndpointUnavailableError extends Error {
+  constructor(public readonly status: number) {
+    super(
+      `Figma /variables/local returned ${status}. The endpoint is Enterprise-only; on other plans, refresh variables via the MCP path instead.`
+    );
+    this.name = "VariablesEndpointUnavailableError";
+  }
+}
+
 function categoryFromPage(page: string | undefined): Category {
   if (!page) return "layout";
   const p = page.toLowerCase();
@@ -95,11 +108,16 @@ export async function extractVariablesFromFigma(
   const f = opts.fetchImpl ?? fetch;
   const ts = new Date().toISOString();
 
-  const varsBody = await fget<FigmaVariablesResponse>(
-    `${BASE}/files/${opts.fileKey}/variables/local`,
-    opts.token,
-    f
-  );
+  const res = await f(`${BASE}/files/${opts.fileKey}/variables/local`, {
+    headers: { "X-Figma-Token": opts.token },
+  });
+  if (!res.ok) {
+    if (res.status === 403 || res.status === 404) {
+      throw new VariablesEndpointUnavailableError(res.status);
+    }
+    throw new Error(`GET /variables/local failed: ${res.status}`);
+  }
+  const varsBody = (await res.json()) as FigmaVariablesResponse;
   const collections = varsBody.meta?.variableCollections ?? {};
   const varDefs = varsBody.meta?.variables ?? {};
 

@@ -5,6 +5,7 @@ import {
   extractComponentsFromFigma,
   extractVariablesFromFigma,
   extractTextStylesFromFigma,
+  VariablesEndpointUnavailableError,
 } from "../extractors/figma-rest.js";
 import { parseKBConfig, resolveFileKey } from "../config/kb-config.js";
 
@@ -17,6 +18,11 @@ interface RegistryWrite {
   fileKey: string;
 }
 
+interface RegistrySkip {
+  registry: string;
+  reason: string;
+}
+
 export async function runCron(opts: CronOptions) {
   const raw = await readFile(opts.configPath, "utf8");
   const cfg = parseKBConfig(raw);
@@ -27,6 +33,7 @@ export async function runCron(opts: CronOptions) {
   await mkdir(regDir, { recursive: true });
 
   const writes: RegistryWrite[] = [];
+  const skips: RegistrySkip[] = [];
 
   // Components — resolve which file to fetch from (override → primary)
   {
@@ -36,12 +43,25 @@ export async function runCron(opts: CronOptions) {
     writes.push({ registry: "components.json", fileKey });
   }
 
-  // Variables
+  // Variables — gracefully skip if the endpoint is unavailable (non-Enterprise
+  // plans get a 403 on /variables/local). Existing variables.json is left
+  // untouched so manual MCP refreshes remain authoritative.
   {
     const fileKey = resolveFileKey(cfg, "variables");
-    const reg = await extractVariablesFromFigma({ fileKey, token });
-    await writeFile(path.join(regDir, "variables.json"), JSON.stringify(reg, null, 2) + "\n");
-    writes.push({ registry: "variables.json", fileKey });
+    try {
+      const reg = await extractVariablesFromFigma({ fileKey, token });
+      await writeFile(path.join(regDir, "variables.json"), JSON.stringify(reg, null, 2) + "\n");
+      writes.push({ registry: "variables.json", fileKey });
+    } catch (err) {
+      if (err instanceof VariablesEndpointUnavailableError) {
+        skips.push({
+          registry: "variables.json",
+          reason: `endpoint returned ${err.status} (Enterprise-only — refresh manually via MCP)`,
+        });
+      } else {
+        throw err;
+      }
+    }
   }
 
   // Text styles
@@ -52,18 +72,25 @@ export async function runCron(opts: CronOptions) {
     writes.push({ registry: "text-styles.json", fileKey });
   }
 
-  const reportLines = [
-    `# Bridge KB sync — ${cfg.dsName}`,
-    "",
-    "Registries refreshed from Figma:",
-    "",
-    ...writes.map((w) => `- \`${w.registry}\` (from \`${w.fileKey}\`)`),
-    "",
-  ];
+  const reportLines = [`# Bridge KB sync — ${cfg.dsName}`, ""];
+  if (writes.length > 0) {
+    reportLines.push("Registries refreshed from Figma:", "");
+    for (const w of writes) {
+      reportLines.push(`- \`${w.registry}\` (from \`${w.fileKey}\`)`);
+    }
+    reportLines.push("");
+  }
+  if (skips.length > 0) {
+    reportLines.push("Skipped (existing files preserved):", "");
+    for (const s of skips) {
+      reportLines.push(`- \`${s.registry}\` — ${s.reason}`);
+    }
+    reportLines.push("");
+  }
   await mkdir(".bridge", { recursive: true });
   await writeFile(".bridge/last-sync-report.md", reportLines.join("\n"), "utf8");
 
-  return { extracted: true, dsName: cfg.dsName, writes };
+  return { extracted: true, dsName: cfg.dsName, writes, skips };
 }
 
 const invokedPath = process.argv[1] ?? "";

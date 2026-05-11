@@ -110,6 +110,56 @@ test("extractVariablesFromFigma only hits /variables/local endpoint", async () =
   assert.equal(reg.variables.length, 1);
 });
 
+test("extractVariablesFromFigma throws VariablesEndpointUnavailableError on 403", async () => {
+  const { VariablesEndpointUnavailableError } = await import("./figma-rest.js");
+  const fetchImpl = (async () => {
+    return {
+      ok: false,
+      status: 403,
+      async json() {
+        return {};
+      },
+    } as Response;
+  }) as typeof fetch;
+  await assert.rejects(
+    () => extractVariablesFromFigma({ fileKey: "X", token: "t", fetchImpl }),
+    (err: unknown) => err instanceof VariablesEndpointUnavailableError
+  );
+});
+
+test("extractVariablesFromFigma throws VariablesEndpointUnavailableError on 404", async () => {
+  const { VariablesEndpointUnavailableError } = await import("./figma-rest.js");
+  const fetchImpl = (async () => {
+    return {
+      ok: false,
+      status: 404,
+      async json() {
+        return {};
+      },
+    } as Response;
+  }) as typeof fetch;
+  await assert.rejects(
+    () => extractVariablesFromFigma({ fileKey: "X", token: "t", fetchImpl }),
+    (err: unknown) => err instanceof VariablesEndpointUnavailableError
+  );
+});
+
+test("extractVariablesFromFigma rethrows other HTTP errors as generic Error", async () => {
+  const fetchImpl = (async () => {
+    return {
+      ok: false,
+      status: 500,
+      async json() {
+        return {};
+      },
+    } as Response;
+  }) as typeof fetch;
+  await assert.rejects(
+    () => extractVariablesFromFigma({ fileKey: "X", token: "t", fetchImpl }),
+    /failed: 500/
+  );
+});
+
 test("extractTextStylesFromFigma only hits /styles endpoint", async () => {
   const FIX = path.resolve("test/fixtures/figma-rest");
   const s = JSON.parse(await readFile(path.join(FIX, "styles-response.json"), "utf8"));

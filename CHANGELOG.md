@@ -2,6 +2,19 @@
 
 All notable changes to Bridge DS are documented here.
 
+## [6.1.1] — 2026-05-11
+
+Graceful degradation when the Figma variables endpoint is gated by plan tier. Non-Enterprise teams can now run the cron without it failing — variables stay refreshed manually via MCP, components and text styles continue to refresh automatically.
+
+### Fixed
+
+- **403/404 on `/variables/local` no longer fails the cron.** The orchestrator catches `VariablesEndpointUnavailableError` (new typed sentinel), preserves the existing `variables.json` on disk, and continues with the other registries. The sync report now lists skipped registries with reasons.
+- **`runCron` return value** gains a `skips: { registry, reason }[]` array.
+
+### Why
+
+The Figma REST endpoint `/files/{key}/variables/local` is Enterprise-only. Non-Enterprise tokens get a 403, which previously crashed the whole cron run before it could refresh components or text styles. The MCP path (used by the `extracting-design-system` skill in interactive setup) is unaffected — it goes through the Plugin API, which exposes variables on all plans. So the right behaviour for the cron is to extract what it can and leave the rest to a manual MCP refresh.
+
 ## [6.1.0] — 2026-05-11
 
 Multi-file KB sync. The cron now supports a design system split across several Figma library files — common for teams that publish a "Foundations" library (variables + text styles) separately from a "Components" library.
