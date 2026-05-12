@@ -1,0 +1,15 @@
+rules:
+  card-no-headings:
+    description: "Cards must not use heading tokens"
+    given: "$..tokens[*].name"
+    then: { function: pattern, functionOptions: { notMatch: "^text/heading" } }
+    severity: error
+    meta:
+      bridgeApi: "1.x"
+      category: typography
+      surface: [skill-overlay]
+      appliesTo: [card]
+      status: active
+      rationale: "Heading tokens break visual hierarchy at card scale."
+      example: "$text/body/sm"
+      since: "1.0.0"

@@ -1,0 +1,10 @@
+<iron-laws>
+
+The following design-system rules apply to this spec (archetype: card).
+Violations will be caught by `bridge-ds lint` and may block compile.
+
+[card-no-headings] Heading tokens break visual hierarchy at card scale.
+Why: Heading tokens break visual hierarchy at card scale.
+Example: $text/body/sm
+
+</iron-laws>
