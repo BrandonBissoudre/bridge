@@ -1,0 +1,4 @@
+# Stricter severities — every rule promoted to its highest reasonable level.
+extends: [./recommended.yaml]
+rules:
+  # Severity overrides only; populated alongside recommended

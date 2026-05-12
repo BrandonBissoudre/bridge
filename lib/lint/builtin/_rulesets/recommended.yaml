@@ -1,0 +1,5 @@
+# Universal rules every Bridge DS should run.
+# Extend in consumer config via: `extends: [bridge:recommended]`
+extends: []
+rules:
+  # Populated by subagents in Task 11–13
