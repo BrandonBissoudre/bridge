@@ -1,0 +1,15 @@
+extends: []
+rules:
+  test-rule:
+    description: "Test rule"
+    given: "$.value"
+    then:
+      function: pattern
+      functionOptions: { notMatch: "^bad$" }
+    severity: warn
+    meta:
+      bridgeApi: "1.x"
+      category: structure
+      surface: [lint-time]
+      status: active
+      since: "1.0.0"
