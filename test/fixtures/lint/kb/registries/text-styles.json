@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "generatedAt": "2026-05-12T00:00:00Z",
+  "styles": [
+    {
+      "key": "TextStyle:42",
+      "name": "body/md",
+      "fontFamily": "Inter",
+      "fontStyle": "Regular",
+      "fontSize": 14
+    }
+  ]
+}

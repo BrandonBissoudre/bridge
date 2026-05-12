@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "generatedAt": "2026-05-12T00:00:00Z",
+  "components": [
+    {
+      "key": "btn123abc",
+      "name": "Button",
+      "category": "actions",
+      "status": "stable"
+    }
+  ]
+}

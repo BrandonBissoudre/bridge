@@ -2,20 +2,22 @@
 // Real implementations + remaining stubs for the built-in custom Spectral
 // functions referenced by the bridge:recommended preset.
 //
-// v7.1.0 ships real implementations for 5 of the 10 functions originally
+// v7.1.1 ships real implementations for 9 of the 10 functions originally
 // stubbed in v7.0:
-//   - text-is-english
-//   - snapshot-exists
-//   - filename-pattern
-//   - property-key-has-figma-suffix
-//   - rule-has-bridge-api
+//   - text-is-english                 (v7.1.0)
+//   - snapshot-exists                 (v7.1.0)
+//   - filename-pattern                (v7.1.0)
+//   - property-key-has-figma-suffix   (v7.1.0)
+//   - rule-has-bridge-api             (v7.1.0)
+//   - token-exists-in-kb              (v7.1.1)
+//   - token-not-deprecated            (v7.1.1)
+//   - interaction-token-is-float      (v7.1.1)
+//   - recipe-eligible                 (v7.1.1)
 //
-// The other 5 (token-exists-in-kb, token-not-deprecated,
-// interaction-token-is-float, ship-bundle-complete, recipe-eligible) need
-// access to a parsed knowledge base; they remain stubs here and will be
-// implemented in a follow-up patch that closes over `ctx.kbPath`.
+// `ship-bundle-complete` remains a deferred stub — it needs git history
+// introspection and is scheduled for v7.2+.
 //
-// Why a factory? Future KB-based functions need per-cwd state (parsed KB
+// Why a factory? KB-based functions need per-cwd state (parsed KB
 // snapshot, cache invalidation against the consumer's working directory).
 // Returning a fresh `Record<string, RulesetFunction>` per
 // `runRulesAgainstDocument` invocation lets the engine isolate that state
@@ -24,6 +26,7 @@
 import { existsSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import type { IFunctionResult, RulesetFunction } from "@stoplight/spectral-core";
+import { loadKB } from "./kb-loader.js";
 
 /**
  * Context object threaded into every Bridge built-in custom function factory.
@@ -57,12 +60,20 @@ export function buildBridgeBuiltinFunctions(
     >,
     "rule-has-bridge-api": makeRuleHasBridgeApi(),
 
-    // Remaining stubs — implemented in a follow-up dispatch (B-2).
-    "token-exists-in-kb": stub("token-exists-in-kb"),
-    "token-not-deprecated": stub("token-not-deprecated"),
-    "interaction-token-is-float": stub("interaction-token-is-float"),
-    "ship-bundle-complete": stub("ship-bundle-complete"),
-    "recipe-eligible": stub("recipe-eligible"),
+    // KB-based real implementations — v7.1.1.
+    "token-exists-in-kb": makeTokenExistsInKB(ctx) as RulesetFunction<unknown, unknown>,
+    "token-not-deprecated": makeTokenNotDeprecated(ctx) as RulesetFunction<unknown, unknown>,
+    "interaction-token-is-float": makeInteractionTokenIsFloat(ctx) as RulesetFunction<
+      unknown,
+      unknown
+    >,
+    "recipe-eligible": makeRecipeEligible() as RulesetFunction<unknown, unknown>,
+
+    // Deferred — requires git history introspection (v7.2+).
+    "ship-bundle-complete": deferredStub(
+      "ship-bundle-complete",
+      "requires git history introspection — deferred to v7.2+"
+    ),
   };
 }
 
@@ -71,12 +82,19 @@ export function buildBridgeBuiltinFunctions(
 // ---------------------------------------------------------------------------
 
 const warnedOnce = new Set<string>();
-function stub(name: string): RulesetFunction<unknown, unknown> {
+
+/**
+ * No-op function that emits a one-time warning explaining why the named
+ * function is deferred (e.g. "needs git introspection — v7.2+"). Replaces
+ * the generic v7.0 `stub()` helper now that every stub either has a real
+ * impl or a known deferral reason.
+ */
+function deferredStub(name: string, reason: string): RulesetFunction<unknown, unknown> {
   const fn: RulesetFunction<unknown, unknown> = () => {
     if (!warnedOnce.has(name)) {
       warnedOnce.add(name);
       console.warn(
-        `[bridge-ds lint] custom function "${name}" is a v7.0 stub — pending real impl in v7.1+. Set rule severity to "off" to silence.`
+        `[bridge-ds lint] custom function "${name}" is deferred: ${reason}. Set rule severity to "off" to silence.`
       );
     }
     return undefined;
@@ -321,6 +339,167 @@ function makeRuleHasBridgeApi(): RulesetFunction<unknown, unknown> {
         {
           message: `meta.bridgeApi "${bridgeApi}" is not a recognizable semver range. Expected formats: "1.x", "1.0.x", "^1.0.0".`,
           path: [...context.path, "meta", "bridgeApi"],
+        },
+      ];
+    }
+    return undefined;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 2.6 token-exists-in-kb
+// ---------------------------------------------------------------------------
+//
+// Rule shape: `given: $..tokens[*].name` — input is the *string* token ref
+// (e.g. "$color/background/surface/subtle"). When the consumer has no KB
+// extracted yet (pre-bootstrap state), we silently skip so green-field repos
+// don't drown in noise.
+
+function makeTokenExistsInKB(ctx: BridgeBuiltinContext): RulesetFunction<string, unknown> {
+  return (input, _options, context) => {
+    if (typeof input !== "string") return;
+    const kb = loadKB(ctx.cwd, ctx.kbPath);
+    if (!kb) return; // No KB → skip silently (consumer might be in pre-extract state)
+    const name = input.startsWith("$") ? input.slice(1) : input;
+    if (kb.variableByName.has(name)) return;
+    // Could be a component or text style ref — check those too.
+    if (kb.componentByName.has(name) || kb.textStyleByName.has(name)) return;
+    return [
+      {
+        message: `Token "${input}" does not exist in the KB. Did you mean one of: ${suggestNearest(
+          name,
+          kb.variableByName
+        )}?`,
+        path: context.path,
+      },
+    ];
+  };
+}
+
+/**
+ * Cheap nearest-neighbor suggestion for missing tokens. Picks up to 3 names
+ * that share a substring with the miss (case-insensitive) or whose top-level
+ * namespace ("color", "spacing", ...) matches the miss's first segment.
+ * Not a real edit-distance ranker — that would be overkill for a lint hint.
+ */
+function suggestNearest(name: string, byName: Map<string, unknown>): string {
+  const lower = name.toLowerCase();
+  const firstSeg = lower.split("/")[0] ?? "";
+  const candidates: string[] = [];
+  for (const candidate of byName.keys()) {
+    const candLower = candidate.toLowerCase();
+    const candFirstSeg = candLower.split("/")[0] ?? "";
+    if (candLower.includes(lower) || (firstSeg.length > 0 && candFirstSeg === firstSeg)) {
+      candidates.push(candidate);
+      if (candidates.length >= 3) break;
+    }
+  }
+  return candidates.length > 0 ? candidates.join(", ") : "(no close matches found)";
+}
+
+// ---------------------------------------------------------------------------
+// 2.7 token-not-deprecated
+// ---------------------------------------------------------------------------
+
+function makeTokenNotDeprecated(ctx: BridgeBuiltinContext): RulesetFunction<string, unknown> {
+  return (input, _options, context) => {
+    if (typeof input !== "string") return;
+    const kb = loadKB(ctx.cwd, ctx.kbPath);
+    if (!kb) return;
+    const name = input.startsWith("$") ? input.slice(1) : input;
+    const entry = kb.variableByName.get(name);
+    if (entry?.status === "deprecated") {
+      return [
+        {
+          message: `Token "${input}" is deprecated in the KB. Migrate to a non-deprecated alternative.`,
+          path: context.path,
+        },
+      ];
+    }
+    return undefined;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 2.8 interaction-token-is-float
+// ---------------------------------------------------------------------------
+//
+// Interaction tokens are opacity overlays (FLOAT). Modeling them as COLOR
+// breaks the overlay semantic — a designer ends up baking the hover/pressed
+// state into the base fill instead of stacking translucent layers.
+//
+// `given` may yield either the bare string ref or the parent token object
+// (depending on rule authoring style); we tolerate both.
+
+function makeInteractionTokenIsFloat(
+  ctx: BridgeBuiltinContext
+): RulesetFunction<{ name?: string } | string, unknown> {
+  return (input, _options, context) => {
+    const tokenRef =
+      typeof input === "string"
+        ? input
+        : input && typeof input === "object" && "name" in input
+          ? (input as { name?: string }).name
+          : undefined;
+    if (typeof tokenRef !== "string") return;
+    if (!tokenRef.startsWith("$interaction/")) return;
+    const kb = loadKB(ctx.cwd, ctx.kbPath);
+    if (!kb) return;
+    const name = tokenRef.slice(1);
+    const entry = kb.variableByName.get(name);
+    if (entry && entry.resolvedType && entry.resolvedType !== "FLOAT") {
+      return [
+        {
+          message: `Interaction token "${tokenRef}" has resolvedType ${entry.resolvedType}, expected FLOAT. Interaction tokens are opacity overlays — modeling them as COLOR breaks the overlay semantic.`,
+          path: context.path,
+        },
+      ];
+    }
+    return undefined;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 2.9 recipe-eligible
+// ---------------------------------------------------------------------------
+//
+// Info-level guidance, not a hard fail. Recipes are typically extracted for
+// `screen`-archetype CSpecs with few corrections. Other archetypes (component,
+// page) or specs with many corrections may still ship a recipe, but the
+// designer should confirm intent — high correction counts indicate fragile
+// assumptions that may drift on replay.
+
+interface RecipeEligibleOptions {
+  readonly archetype?: string;
+  readonly maxCorrections?: number;
+}
+
+function makeRecipeEligible(): RulesetFunction<
+  { archetype?: string; meta?: { corrections?: number } } | unknown,
+  RecipeEligibleOptions
+> {
+  return (input, options, context) => {
+    const opts = (options ?? {}) as RecipeEligibleOptions;
+    const requiredArchetype = opts.archetype ?? "screen";
+    const maxCorrections = opts.maxCorrections ?? 2;
+
+    const doc = input as { archetype?: string; meta?: { corrections?: number } };
+    const archetype = doc?.archetype;
+    const corrections = doc?.meta?.corrections ?? 0;
+
+    if (archetype !== requiredArchetype) {
+      return [
+        {
+          message: `Recipe eligibility (info): archetype is "${archetype ?? "<missing>"}", recipes are typically only extracted for "${requiredArchetype}". Confirm intent if shipping a recipe.`,
+          path: context.path,
+        },
+      ];
+    }
+    if (corrections > maxCorrections) {
+      return [
+        {
+          message: `Recipe eligibility (info): ${corrections} corrections recorded, max ${maxCorrections}. High correction count indicates fragile assumptions — recipe replay may drift.`,
+          path: context.path,
         },
       ];
     }

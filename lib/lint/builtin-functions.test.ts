@@ -7,11 +7,24 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, mkdirSync, cpSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { runRulesAgainstDocument } from "./engine.js";
 import type { RuleDef } from "./types.js";
+import { _resetKBCache } from "./kb-loader.js";
+
+const KB_FIXTURE_SRC = path.resolve("test/fixtures/lint/kb");
+
+/** Create a temp cwd with the lint KB fixture copied under bridge-ds/knowledge-base. */
+function makeKBCwd(prefix: string): string {
+  const dir = mkdtempSync(path.join(tmpdir(), prefix));
+  const dest = path.join(dir, "bridge-ds", "knowledge-base");
+  mkdirSync(dest, { recursive: true });
+  cpSync(KB_FIXTURE_SRC, dest, { recursive: true });
+  _resetKBCache();
+  return dir;
+}
 
 function makeRule(
   id: string,
@@ -276,25 +289,235 @@ test("rule-has-bridge-api: valid range passes", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Smoke: factory wiring — engine resolves bridge built-ins by name
+// token-exists-in-kb
 // ---------------------------------------------------------------------------
 
-test("buildBridgeBuiltinFunctions wires into engine without throwing", async () => {
-  // A rule that uses one of the remaining stubs ("token-exists-in-kb") should
-  // still load (no "Unknown function" crash) and emit no diagnostics.
+test("token-exists-in-kb: existing token passes silently", async () => {
+  const dir = makeKBCwd("bridge-token-exists-pass-");
+  try {
+    const ruleset = makeRule("token-exists", {
+      given: "$..tokens[*].name",
+      then: { function: "token-exists-in-kb" },
+    });
+    const r = await runRulesAgainstDocument(
+      ruleset,
+      { tokens: [{ name: "$color/background/surface/subtle" }] },
+      { source: "x.cspec.yaml", cwd: dir }
+    );
+    assert.equal(r.diagnostics.length, 0, JSON.stringify(r.diagnostics));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("token-exists-in-kb: missing token emits diagnostic with suggestions", async () => {
+  const dir = makeKBCwd("bridge-token-exists-fail-");
+  try {
+    const ruleset = makeRule("token-exists", {
+      given: "$..tokens[*].name",
+      then: { function: "token-exists-in-kb" },
+    });
+    const r = await runRulesAgainstDocument(
+      ruleset,
+      { tokens: [{ name: "$color/nope/whatever" }] },
+      { source: "x.cspec.yaml", cwd: dir }
+    );
+    assert.equal(r.diagnostics.length, 1, JSON.stringify(r.diagnostics));
+    assert.match(r.diagnostics[0].message, /does not exist in the KB/);
+    assert.match(r.diagnostics[0].message, /Did you mean/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("token-exists-in-kb: no KB → silently skips", async () => {
+  _resetKBCache();
+  const dir = mkdtempSync(path.join(tmpdir(), "bridge-token-exists-nokb-"));
+  try {
+    const ruleset = makeRule("token-exists", {
+      given: "$..tokens[*].name",
+      then: { function: "token-exists-in-kb" },
+    });
+    const r = await runRulesAgainstDocument(
+      ruleset,
+      { tokens: [{ name: "$color/nope/whatever" }] },
+      { source: "x.cspec.yaml", cwd: dir }
+    );
+    assert.equal(r.diagnostics.length, 0, JSON.stringify(r.diagnostics));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// token-not-deprecated
+// ---------------------------------------------------------------------------
+
+test("token-not-deprecated: non-deprecated token passes", async () => {
+  const dir = makeKBCwd("bridge-deprecated-pass-");
+  try {
+    const ruleset = makeRule("not-deprecated", {
+      given: "$..tokens[*].name",
+      then: { function: "token-not-deprecated" },
+    });
+    const r = await runRulesAgainstDocument(
+      ruleset,
+      { tokens: [{ name: "$color/background/surface/subtle" }] },
+      { source: "x.cspec.yaml", cwd: dir }
+    );
+    assert.equal(r.diagnostics.length, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("token-not-deprecated: deprecated token emits diagnostic", async () => {
+  const dir = makeKBCwd("bridge-deprecated-fail-");
+  try {
+    const ruleset = makeRule("not-deprecated", {
+      given: "$..tokens[*].name",
+      then: { function: "token-not-deprecated" },
+    });
+    const r = await runRulesAgainstDocument(
+      ruleset,
+      { tokens: [{ name: "$color/text/legacy/muted" }] },
+      { source: "x.cspec.yaml", cwd: dir }
+    );
+    assert.equal(r.diagnostics.length, 1, JSON.stringify(r.diagnostics));
+    assert.match(r.diagnostics[0].message, /deprecated/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// interaction-token-is-float
+// ---------------------------------------------------------------------------
+
+test("interaction-token-is-float: FLOAT interaction token passes", async () => {
+  const dir = makeKBCwd("bridge-interaction-pass-");
+  try {
+    const ruleset = makeRule("interaction-float", {
+      given: "$..tokens[*].name",
+      then: { function: "interaction-token-is-float" },
+    });
+    const r = await runRulesAgainstDocument(
+      ruleset,
+      { tokens: [{ name: "$interaction/hover" }] },
+      { source: "x.cspec.yaml", cwd: dir }
+    );
+    assert.equal(r.diagnostics.length, 0, JSON.stringify(r.diagnostics));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("interaction-token-is-float: COLOR-typed interaction token emits", async () => {
+  const dir = makeKBCwd("bridge-interaction-fail-");
+  try {
+    const ruleset = makeRule("interaction-float", {
+      given: "$..tokens[*].name",
+      then: { function: "interaction-token-is-float" },
+    });
+    const r = await runRulesAgainstDocument(
+      ruleset,
+      { tokens: [{ name: "$interaction/pressed-bad" }] },
+      { source: "x.cspec.yaml", cwd: dir }
+    );
+    assert.equal(r.diagnostics.length, 1, JSON.stringify(r.diagnostics));
+    assert.match(r.diagnostics[0].message, /expected FLOAT/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("interaction-token-is-float: non-interaction token is ignored", async () => {
+  const dir = makeKBCwd("bridge-interaction-skip-");
+  try {
+    const ruleset = makeRule("interaction-float", {
+      given: "$..tokens[*].name",
+      then: { function: "interaction-token-is-float" },
+    });
+    const r = await runRulesAgainstDocument(
+      ruleset,
+      { tokens: [{ name: "$color/background/surface/subtle" }] },
+      { source: "x.cspec.yaml", cwd: dir }
+    );
+    assert.equal(r.diagnostics.length, 0, JSON.stringify(r.diagnostics));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// recipe-eligible
+// ---------------------------------------------------------------------------
+
+test("recipe-eligible: screen archetype with low corrections passes", async () => {
+  const ruleset = makeRule("recipe", {
+    given: "$",
+    then: { function: "recipe-eligible" },
+  });
+  const r = await runRulesAgainstDocument(
+    ruleset,
+    { archetype: "screen", meta: { corrections: 1 } },
+    { source: "x.cspec.yaml" }
+  );
+  assert.equal(r.diagnostics.length, 0, JSON.stringify(r.diagnostics));
+});
+
+test("recipe-eligible: component archetype emits info", async () => {
+  const ruleset = makeRule("recipe", {
+    given: "$",
+    then: { function: "recipe-eligible" },
+    severity: "info",
+  });
+  const r = await runRulesAgainstDocument(
+    ruleset,
+    { archetype: "component", meta: { corrections: 0 } },
+    { source: "x.cspec.yaml" }
+  );
+  assert.equal(r.diagnostics.length, 1, JSON.stringify(r.diagnostics));
+  assert.match(r.diagnostics[0].message, /archetype is "component"/);
+});
+
+test("recipe-eligible: high correction count emits info", async () => {
+  const ruleset = makeRule("recipe", {
+    given: "$",
+    then: { function: "recipe-eligible" },
+    severity: "info",
+  });
+  const r = await runRulesAgainstDocument(
+    ruleset,
+    { archetype: "screen", meta: { corrections: 5 } },
+    { source: "x.cspec.yaml" }
+  );
+  assert.equal(r.diagnostics.length, 1, JSON.stringify(r.diagnostics));
+  assert.match(r.diagnostics[0].message, /5 corrections recorded/);
+});
+
+// ---------------------------------------------------------------------------
+// Smoke: factory wiring — deferred stub for ship-bundle-complete still loads
+// ---------------------------------------------------------------------------
+
+test("ship-bundle-complete deferred stub: loads without crashing, emits warning once", async () => {
   // Suppress the once-per-name warning the stub prints to stderr.
   const originalWarn = console.warn;
-  console.warn = () => undefined;
+  let warnMessage: string | undefined;
+  console.warn = (msg: string) => {
+    warnMessage = msg;
+  };
   try {
-    const dir = mkdtempSync(path.join(tmpdir(), "bridge-stub-wiring-"));
+    const dir = mkdtempSync(path.join(tmpdir(), "bridge-deferred-wiring-"));
     mkdirSync(dir, { recursive: true });
-    const ruleset = makeRule("stub", {
+    const ruleset = makeRule("deferred", {
       given: "$",
-      then: { function: "token-exists-in-kb" },
+      then: { function: "ship-bundle-complete" },
       severity: "warn",
     });
     const r = await runRulesAgainstDocument(ruleset, {}, { source: "x.yaml", cwd: dir });
     assert.equal(r.diagnostics.length, 0);
+    assert.match(warnMessage ?? "", /deferred/);
     rmSync(dir, { recursive: true, force: true });
   } finally {
     console.warn = originalWarn;

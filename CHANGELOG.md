@@ -2,6 +2,34 @@
 
 All notable changes to Bridge DS are documented here.
 
+## [7.1.1] — 2026-05-12
+
+### Added
+
+- Real implementations of 4 KB-based built-in custom functions:
+  - `token-exists-in-kb` — verifies every `$token/...` ref resolves in the
+    consumer's KB; emits a "did you mean..." suggestion list on miss.
+  - `token-not-deprecated` — flags references to tokens with
+    `status: deprecated` in the KB.
+  - `interaction-token-is-float` — verifies `$interaction/*` tokens have
+    `resolvedType: FLOAT`, not COLOR.
+  - `recipe-eligible` — info-level guidance on recipe extraction
+    eligibility (screen archetype + low correction count).
+- Memoized `lib/lint/kb-loader.ts` reads `bridge-ds/knowledge-base/registries/`
+  JSON files once per process. Tolerant to multiple historical shapes.
+
+### Changed
+
+- `ship-bundle-complete` stub now emits a clearer deferred-reason warning
+  ("requires git history introspection — deferred to v7.2+") instead of
+  the generic stub message.
+
+### Compatibility
+
+When the consumer has no `bridge-ds/knowledge-base/` directory, all KB-based
+functions silently no-op — appropriate for the pre-extraction state of a
+fresh repo.
+
 ## [7.1.0] — 2026-05-12
 
 ### Added

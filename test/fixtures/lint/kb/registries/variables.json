@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "generatedAt": "2026-05-12T00:00:00Z",
+  "variables": [
+    {
+      "key": "VariableID:1:1",
+      "name": "color/background/surface/subtle",
+      "resolvedType": "COLOR",
+      "valuesByMode": {
+        "light": { "r": 0.97, "g": 0.97, "b": 0.97, "a": 1 }
+      },
+      "status": "active"
+    },
+    {
+      "key": "VariableID:1:2",
+      "name": "color/text/legacy/muted",
+      "resolvedType": "COLOR",
+      "valuesByMode": {
+        "light": { "r": 0.5, "g": 0.5, "b": 0.5, "a": 1 }
+      },
+      "status": "deprecated"
+    },
+    {
+      "key": "VariableID:2:1",
+      "name": "interaction/hover",
+      "resolvedType": "FLOAT",
+      "valuesByMode": {
+        "light": 0.08
+      },
+      "status": "active"
+    },
+    {
+      "key": "VariableID:2:2",
+      "name": "interaction/pressed-bad",
+      "resolvedType": "COLOR",
+      "valuesByMode": {
+        "light": { "r": 0, "g": 0, "b": 0, "a": 0.1 }
+      },
+      "status": "active"
+    },
+    {
+      "key": "VariableID:3:1",
+      "name": "color/border/opacity/subtlest",
+      "resolvedType": "COLOR",
+      "valuesByMode": {
+        "light": { "r": 0, "g": 0, "b": 0, "a": 0.05 }
+      },
+      "status": "active"
+    }
+  ]
+}
