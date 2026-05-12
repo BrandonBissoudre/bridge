@@ -1,0 +1,6 @@
+name: bad-button
+archetype: component
+component: BadButton
+properties:
+  state: "VARIANT(default | hover | pressed | disabled)"
+  intent: "VARIANT(primary | secondary)"

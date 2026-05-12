@@ -1,0 +1,7 @@
+name: crypto-card
+archetype: card
+component: CryptoCard
+description: "Une carte qui affiche les avoirs crypto de l'utilisateur."
+copy:
+  title: "Crypto-monnaies"
+  placeholder: "Rechercher un actif"

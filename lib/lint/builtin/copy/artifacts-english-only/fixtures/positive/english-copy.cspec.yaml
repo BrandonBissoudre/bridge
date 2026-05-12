@@ -1,0 +1,9 @@
+name: crypto-card
+archetype: card
+component: CryptoCard
+description: "A card surfacing the user's crypto holdings with daily PnL."
+copy:
+  title: "Crypto"
+  placeholder: "Search assets"
+properties:
+  variant: default

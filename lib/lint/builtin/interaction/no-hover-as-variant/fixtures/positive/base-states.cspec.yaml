@@ -1,0 +1,7 @@
+name: primary-button
+archetype: component
+component: Button
+properties:
+  state: "VARIANT(default | loading | empty | error)"
+  size: "VARIANT(sm | md | lg)"
+  intent: "VARIANT(primary | secondary | danger)"

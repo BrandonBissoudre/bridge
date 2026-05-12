@@ -1,0 +1,13 @@
+[
+  {
+    "fixture": "negative/hover-variant.cspec.yaml",
+    "diagnostics": [
+      {
+        "ruleId": "no-hover-as-variant",
+        "severity": "error",
+        "path": ["properties", "state"],
+        "messageMatches": "hover|pressed|disabled|variant|prototyp"
+      }
+    ]
+  }
+]

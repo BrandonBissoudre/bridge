@@ -1,0 +1,22 @@
+# lib/lint/builtin/interaction/interaction-tokens-are-float/rule.yaml
+# Interaction tokens model opacity overlays (e.g. hover surface dim, pressed
+# tint). They must be FLOAT in the resolved registry, never COLOR — otherwise
+# they cannot stack over the underlying surface as an alpha layer.
+rules:
+  interaction-tokens-are-float:
+    description: "$interaction/* tokens must resolve to FLOAT (opacity), not COLOR."
+    given: "$..tokens[?(@.name && @.name.indexOf('$interaction/') === 0)]"
+    then:
+      function: interaction-token-is-float
+    severity: warn
+    meta:
+      bridgeApi: "1.x"
+      category: interaction
+      surface:
+        - compile-time
+        - lint-time
+      appliesTo: []
+      status: active
+      rationale: "Interaction tokens are opacity overlays composited on top of a base surface. Declaring them as COLOR breaks the overlay semantic — the renderer ends up replacing the surface instead of dimming it."
+      example: "tokens: [{ name: $interaction/hover, resolvedType: FLOAT, value: 0.08 }]"
+      since: "1.0.0"

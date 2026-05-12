@@ -1,0 +1,25 @@
+[
+  {
+    "fixture": "negative/french-copy.cspec.yaml",
+    "diagnostics": [
+      {
+        "ruleId": "artifacts-english-only",
+        "severity": "error",
+        "path": ["description"],
+        "messageMatches": "english|locale|language"
+      },
+      {
+        "ruleId": "artifacts-english-only",
+        "severity": "error",
+        "path": ["copy", "title"],
+        "messageMatches": "english|locale|language"
+      },
+      {
+        "ruleId": "artifacts-english-only",
+        "severity": "error",
+        "path": ["copy", "placeholder"],
+        "messageMatches": "english|locale|language"
+      }
+    ]
+  }
+]

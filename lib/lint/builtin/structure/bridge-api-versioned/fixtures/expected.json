@@ -1,0 +1,13 @@
+[
+  {
+    "fixture": "negative/missing-bridge-api.ruleset.yaml",
+    "diagnostics": [
+      {
+        "ruleId": "bridge-api-versioned",
+        "severity": "error",
+        "path": ["rules", "custom-no-emoji"],
+        "messageMatches": "bridgeApi|semver|version"
+      }
+    ]
+  }
+]

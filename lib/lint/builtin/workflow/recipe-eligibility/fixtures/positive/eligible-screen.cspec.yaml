@@ -1,0 +1,6 @@
+name: welcome-page
+archetype: screen
+component: WelcomePage
+corrections: 1
+properties:
+  layout: single-column

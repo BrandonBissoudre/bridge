@@ -1,0 +1,26 @@
+# lib/lint/builtin/interaction/no-hover-as-variant/rule.yaml
+# Hover / pressed / disabled are runtime interaction states, not design-time
+# variant axes. Encoding them as component variants explodes the variant
+# matrix and makes the design impossible to bind to a real prototype graph.
+rules:
+  no-hover-as-variant:
+    description: "Disallow hover/pressed/disabled as variant property values; use prototyping for interaction states."
+    given: "$..properties.*"
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "VARIANT\\([^)]*\\b(hover|pressed|disabled)\\b[^)]*\\)"
+    severity: error
+    meta:
+      bridgeApi: "1.x"
+      category: interaction
+      surface:
+        - compile-time
+        - lint-time
+        - skill-overlay
+      appliesTo: []
+      status: active
+      rationale: "Interaction states (hover, pressed, disabled) are produced by the prototyping layer at runtime. Modelling them as variant values doubles the variant matrix per state and prevents binding the design to a single canonical instance."
+      example: "properties: { state: VARIANT(default | loading | empty) }  # NOT hover/pressed/disabled"
+      prompt: "Never declare hover, pressed, or disabled as variant values on a component. Express base states only (default, loading, empty, error, selected). Wire hover / pressed / disabled via the prototyping graph and interaction tokens instead."
+      since: "1.0.0"

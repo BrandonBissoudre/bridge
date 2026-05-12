@@ -1,0 +1,10 @@
+name: broken-row
+archetype: component
+component: BrokenRow
+tokens:
+  - name: $interaction/hover
+    resolvedType: COLOR
+    value: "#0a0a0a"
+  - name: $interaction/pressed
+    resolvedType: COLOR
+    value: "#000000"

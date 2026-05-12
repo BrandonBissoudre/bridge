@@ -1,0 +1,13 @@
+rules:
+  custom-no-emoji:
+    description: "Reject emoji in artifact copy."
+    given: "$..copy"
+    then:
+      function: text-no-emoji
+    severity: warn
+    meta:
+      category: copy
+      surface:
+        - lint-time
+      status: active
+      since: "1.0.0"

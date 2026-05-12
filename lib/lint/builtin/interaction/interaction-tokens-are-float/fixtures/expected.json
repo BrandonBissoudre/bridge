@@ -1,0 +1,19 @@
+[
+  {
+    "fixture": "negative/color-interaction.cspec.yaml",
+    "diagnostics": [
+      {
+        "ruleId": "interaction-tokens-are-float",
+        "severity": "warn",
+        "path": ["tokens", 0],
+        "messageMatches": "FLOAT|opacity|interaction"
+      },
+      {
+        "ruleId": "interaction-tokens-are-float",
+        "severity": "warn",
+        "path": ["tokens", 1],
+        "messageMatches": "FLOAT|opacity|interaction"
+      }
+    ]
+  }
+]

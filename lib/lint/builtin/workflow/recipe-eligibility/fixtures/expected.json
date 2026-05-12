@@ -1,0 +1,24 @@
+[
+  {
+    "fixture": "negative/component-archetype.cspec.yaml",
+    "diagnostics": [
+      {
+        "ruleId": "recipe-eligibility",
+        "severity": "info",
+        "path": [],
+        "messageMatches": "archetype|screen|recipe"
+      }
+    ]
+  },
+  {
+    "fixture": "negative/too-many-corrections.cspec.yaml",
+    "diagnostics": [
+      {
+        "ruleId": "recipe-eligibility",
+        "severity": "info",
+        "path": [],
+        "messageMatches": "correction|recipe|threshold"
+      }
+    ]
+  }
+]

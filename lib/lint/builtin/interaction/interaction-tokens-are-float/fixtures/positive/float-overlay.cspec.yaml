@@ -1,0 +1,12 @@
+name: hoverable-row
+archetype: component
+component: ListRow
+tokens:
+  - name: $color/background/surface/subtle
+    resolvedType: COLOR
+  - name: $interaction/hover
+    resolvedType: FLOAT
+    value: 0.08
+  - name: $interaction/pressed
+    resolvedType: FLOAT
+    value: 0.16

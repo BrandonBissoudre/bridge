@@ -1,0 +1,4 @@
+name: settings-page
+archetype: screen
+component: SettingsPage
+corrections: 7

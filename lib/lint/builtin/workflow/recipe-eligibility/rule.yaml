@@ -1,0 +1,24 @@
+# lib/lint/builtin/workflow/recipe-eligibility/rule.yaml
+# Recipes are replay-ready playbooks. Only screen-level archetypes that
+# converged with ≤2 manual corrections should be promoted to a recipe —
+# below that bar, the recipe carries fragile assumptions and replay drifts.
+rules:
+  recipe-eligibility:
+    description: "Recipes should only be extracted for archetype=screen with ≤2 corrections."
+    given: "$"
+    then:
+      function: recipe-eligible
+      functionOptions:
+        archetype: screen
+        maxCorrections: 2
+    severity: info
+    meta:
+      bridgeApi: "1.x"
+      category: workflow
+      surface:
+        - lint-time
+      appliesTo: []
+      status: active
+      rationale: "A recipe is a deterministic replay. Replays only stay deterministic when the underlying spec was stable end-to-end (low correction count) and operating at screen scope (component-scope replays are subsumed by the DS itself)."
+      example: "archetype: screen, corrections: 1  → eligible. archetype: component → ineligible."
+      since: "1.0.0"

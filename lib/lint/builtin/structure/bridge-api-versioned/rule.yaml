@@ -1,0 +1,23 @@
+# lib/lint/builtin/structure/bridge-api-versioned/rule.yaml
+# Meta-rule: every TS-custom Bridge rule must declare meta.bridgeApi as a
+# semver range string. Without it, the engine cannot decide whether to load
+# the rule against the running Bridge version — silent skips are worse than
+# loud failures.
+rules:
+  bridge-api-versioned:
+    description: "Every custom rule must declare meta.bridgeApi (semver range)."
+    given: "$.rules.*"
+    then:
+      function: rule-has-bridge-api
+    severity: error
+    meta:
+      bridgeApi: "1.x"
+      category: structure
+      surface:
+        - lint-time
+      appliesTo:
+        - "rule-definitions"
+      status: active
+      rationale: "bridgeApi is the compatibility contract between a custom rule and the Bridge runtime. Unversioned rules either fail to load (best case) or run against an incompatible engine and produce silent false positives (worst case)."
+      example: "meta: { bridgeApi: \"1.x\", category: structure, surface: [lint-time], status: active, since: \"1.0.0\" }"
+      since: "1.0.0"

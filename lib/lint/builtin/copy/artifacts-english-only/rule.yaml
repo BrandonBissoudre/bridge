@@ -1,0 +1,30 @@
+# lib/lint/builtin/copy/artifacts-english-only/rule.yaml
+# Every text artifact authored by the design system (descriptions, comments,
+# copy strings, labels) must be English. Mixed-language artifacts leak into
+# screens and dev tickets and force re-translation downstream.
+rules:
+  artifacts-english-only:
+    description: "All artifact text (descriptions, comments, copy, labels) must be English."
+    given:
+      - "$..description"
+      - "$..comment"
+      - "$..copy"
+      - "$..label"
+      - "$..title"
+      - "$..placeholder"
+    then:
+      function: text-is-english
+    severity: error
+    meta:
+      bridgeApi: "1.x"
+      category: copy
+      surface:
+        - compile-time
+        - lint-time
+        - skill-overlay
+      appliesTo: []
+      status: active
+      rationale: "Design-system artifacts are consumed by multiple workspaces and locale pipelines. Non-English source text breaks deterministic translation, search indexing, and shared review."
+      example: "description: 'A card surfacing the user's crypto holdings.'"
+      prompt: "Write all CSpec text — descriptions, comments, copy, labels, titles, placeholders — in English. Localized strings belong in the runtime i18n layer, never in the source artifact."
+      since: "1.0.0"
