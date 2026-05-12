@@ -52,9 +52,7 @@ export function renderCoverage(report: CoverageReport): string {
     if (r.total === 0) continue;
     const pct = Math.round((r.passed / r.total) * 100);
     const bar = "█".repeat(Math.round(pct / 5)).padEnd(20, "░");
-    lines.push(
-      `  ${cat.padEnd(14)} ${bar} ${pct.toString().padStart(3)}%  ${r.passed}/${r.total}`
-    );
+    lines.push(`  ${cat.padEnd(14)} ${bar} ${pct.toString().padStart(3)}%  ${r.passed}/${r.total}`);
   }
   lines.push("");
   const overallPct = report.overall.total

@@ -5,7 +5,7 @@ import { runCron } from "../cron/orchestrator.js";
 import { migrate } from "./migrate.js";
 import { lintCommand } from "./lint.js";
 
-export const VERSION = "6.2.2";
+export const VERSION = "7.0.0";
 
 function printHelp() {
   console.log(`
@@ -61,8 +61,7 @@ export async function main() {
         const sevIdx = process.argv.indexOf("--fail-severity");
         const coverage = process.argv.includes("--coverage");
         const exit = await lintCommand({
-          configPath:
-            cfgIdx >= 0 ? process.argv[cfgIdx + 1] : "bridge-ds/lint/config.yaml",
+          configPath: cfgIdx >= 0 ? process.argv[cfgIdx + 1] : "bridge-ds/lint/config.yaml",
           failSeverity: (sevIdx >= 0 ? process.argv[sevIdx + 1] : "warn") as
             | "warn"
             | "error"

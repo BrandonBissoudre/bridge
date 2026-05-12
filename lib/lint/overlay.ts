@@ -43,9 +43,7 @@ export function renderSkillOverlay(opts: RenderOpts): string {
       archetype ? ` (archetype: ${archetype})` : ""
     }.`
   );
-  lines.push(
-    "Violations will be caught by `bridge-ds lint` and may block compile."
-  );
+  lines.push("Violations will be caught by `bridge-ds lint` and may block compile.");
   lines.push("");
 
   for (const [id, rule] of shown) {
@@ -57,9 +55,7 @@ export function renderSkillOverlay(opts: RenderOpts): string {
   }
 
   if (truncated > 0) {
-    lines.push(
-      `(${truncated} more rules apply — full list: bridge-ds/lint/config.yaml)`
-    );
+    lines.push(`(${truncated} more rules apply — full list: bridge-ds/lint/config.yaml)`);
     lines.push("");
   }
 

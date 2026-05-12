@@ -9,9 +9,7 @@ test("computeCoverage groups by category", () => {
       "rule-b": { meta: { category: "tokens" } },
       "rule-c": { meta: { category: "naming" } },
     } as never,
-    diagnostics: [
-      { ruleId: "rule-a", category: "tokens" } as never,
-    ],
+    diagnostics: [{ ruleId: "rule-a", category: "tokens" } as never],
   });
 
   assert.equal(result.byCategory.tokens.total, 2);
@@ -42,9 +40,7 @@ test("renderCoverage emits per-category lines and totals for non-empty input", (
       "rule-b": { meta: { category: "tokens" } },
       "rule-c": { meta: { category: "naming" } },
     } as never,
-    diagnostics: [
-      { ruleId: "rule-a", category: "tokens" } as never,
-    ],
+    diagnostics: [{ ruleId: "rule-a", category: "tokens" } as never],
   });
   const out = renderCoverage(result);
   assert.match(out, /Bridge KB coverage:/);

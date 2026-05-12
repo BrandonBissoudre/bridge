@@ -40,20 +40,12 @@ rules:
 
   // Document that violates
   const violating = { fill: "#fff" };
-  const r1 = await runRulesAgainstDocument(
-    { rules: compileRules },
-    violating,
-    { source: "test" }
-  );
+  const r1 = await runRulesAgainstDocument({ rules: compileRules }, violating, { source: "test" });
   assert.equal(r1.diagnostics.length, 1);
   assert.equal(r1.diagnostics[0].ruleId, "no-hex");
 
   // Document that passes
   const passing = { fill: "$color/background/surface/subtle" };
-  const r2 = await runRulesAgainstDocument(
-    { rules: compileRules },
-    passing,
-    { source: "test" }
-  );
+  const r2 = await runRulesAgainstDocument({ rules: compileRules }, passing, { source: "test" });
   assert.equal(r2.diagnostics.length, 0);
 });

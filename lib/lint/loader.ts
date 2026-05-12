@@ -30,15 +30,10 @@ export async function loadConfig(configPath: string): Promise<LintConfig | null>
   return loadConfigInner(configPath, new Set());
 }
 
-async function loadConfigInner(
-  configPath: string,
-  seen: Set<string>
-): Promise<LintConfig | null> {
+async function loadConfigInner(configPath: string, seen: Set<string>): Promise<LintConfig | null> {
   const absPath = resolve(configPath);
   if (seen.has(absPath)) {
-    throw new Error(
-      `Lint config cycle detected via ${absPath} (chain: ${[...seen].join(" -> ")})`
-    );
+    throw new Error(`Lint config cycle detected via ${absPath} (chain: ${[...seen].join(" -> ")})`);
   }
   if (!(await fileExists(absPath))) return null;
   seen.add(absPath);
@@ -63,9 +58,7 @@ async function loadConfigInner(
           `[bridge-ds lint] Preset not found: ${ext} (expected at ${extPath}). This is expected during the v7.0 build before Task 10 ships the builtin presets.`
         );
       } else {
-        throw new Error(
-          `Lint config extends missing file: ${ext} (resolved to ${extPath})`
-        );
+        throw new Error(`Lint config extends missing file: ${ext} (resolved to ${extPath})`);
       }
       continue;
     }

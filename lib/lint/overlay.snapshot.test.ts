@@ -9,9 +9,7 @@ test("snapshot: overlay for archetype:card with finary config", async () => {
   const config = await loadConfig("test/fixtures/lint/finary.yaml");
   assert.ok(config?.rules);
 
-  const rules = Object.fromEntries(
-    Object.entries(config.rules).filter(([, r]) => r !== "off")
-  );
+  const rules = Object.fromEntries(Object.entries(config.rules).filter(([, r]) => r !== "off"));
 
   const actual = renderSkillOverlay({
     rules: rules as never,

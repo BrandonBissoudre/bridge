@@ -6,9 +6,7 @@ import { tmpdir } from "node:os";
 import { loadConfig } from "./loader.js";
 
 test("loadConfig parses a minimal yaml config", async () => {
-  const config = await loadConfig(
-    path.resolve("test/fixtures/lint/minimal-config.yaml")
-  );
+  const config = await loadConfig(path.resolve("test/fixtures/lint/minimal-config.yaml"));
   assert.ok(config, "expected config to be non-null");
   assert.equal(Object.keys(config.rules ?? {}).length, 1);
   const rule = config.rules?.["test-rule"];
@@ -80,10 +78,7 @@ rules: {}
 rules: {}
 `
   );
-  await assert.rejects(
-    () => loadConfig(path.join(dir, "a.yaml")),
-    /cycle detected/
-  );
+  await assert.rejects(() => loadConfig(path.join(dir, "a.yaml")), /cycle detected/);
 });
 
 test("loadConfig throws on missing relative extends path", async () => {
@@ -94,8 +89,5 @@ test("loadConfig throws on missing relative extends path", async () => {
 rules: {}
 `
   );
-  await assert.rejects(
-    () => loadConfig(path.join(dir, "config.yaml")),
-    /extends missing file/
-  );
+  await assert.rejects(() => loadConfig(path.join(dir, "config.yaml")), /extends missing file/);
 });

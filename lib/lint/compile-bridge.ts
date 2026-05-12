@@ -27,10 +27,7 @@ function emptyResult(): LintResult {
   };
 }
 
-export async function runLintAtCompileTime(
-  spec: unknown,
-  configPath: string
-): Promise<LintResult> {
+export async function runLintAtCompileTime(spec: unknown, configPath: string): Promise<LintResult> {
   const config = await loadConfig(configPath);
   if (!config || !config.rules) return emptyResult();
 

@@ -77,9 +77,13 @@ test("runRulesAgainstDocument skips rules with severity 'off'", async () => {
       },
     },
   };
-  const result = await runRulesAgainstDocument(ruleset, { value: "foo" }, {
-    source: "test.yaml",
-  });
+  const result = await runRulesAgainstDocument(
+    ruleset,
+    { value: "foo" },
+    {
+      source: "test.yaml",
+    }
+  );
   assert.equal(result.diagnostics.length, 0);
 });
 
@@ -114,9 +118,13 @@ test("runRulesAgainstDocument fires multiple rules at differing severities", asy
       },
     },
   };
-  const result = await runRulesAgainstDocument(ruleset, { value: "foo" }, {
-    source: "test.yaml",
-  });
+  const result = await runRulesAgainstDocument(
+    ruleset,
+    { value: "foo" },
+    {
+      source: "test.yaml",
+    }
+  );
   // Both rules fire on { value: "foo" }: rule-a (pattern violation), rule-b (length<5)
   const severities = result.diagnostics.map((d) => d.severity).sort();
   assert.ok(severities.includes("error"));

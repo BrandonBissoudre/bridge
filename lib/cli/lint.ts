@@ -45,27 +45,19 @@ export async function lintCommand(opts: LintCliOpts): Promise<number> {
     const doc = yamlLoad(await readFile(specPath, "utf-8"), {
       schema: JSON_SCHEMA,
     });
-    const res = await runRulesAgainstDocument(
-      { rules: allRules },
-      doc,
-      { source: path.relative(process.cwd(), specPath) }
-    );
+    const res = await runRulesAgainstDocument({ rules: allRules }, doc, {
+      source: path.relative(process.cwd(), specPath),
+    });
     allDiagnostics.push(...res.diagnostics);
   }
 
   for (const d of allDiagnostics) {
-    console.log(
-      `  ${d.severity.padEnd(5)} ${d.source}: [${d.ruleId}] ${d.message}`
-    );
+    console.log(`  ${d.severity.padEnd(5)} ${d.source}: [${d.ruleId}] ${d.message}`);
   }
 
   if (opts.coverage) {
     console.log("");
-    console.log(
-      renderCoverage(
-        computeCoverage({ rules: allRules, diagnostics: allDiagnostics })
-      )
-    );
+    console.log(renderCoverage(computeCoverage({ rules: allRules, diagnostics: allDiagnostics })));
   }
 
   const severityOrder = { off: 0, hint: 1, info: 2, warn: 3, error: 4 } as const;

@@ -97,10 +97,7 @@ export interface CompileLintResult {
  *    blocking lint diagnostics without touching the scene-graph pipeline.
  */
 export function compile(options: CompileOptions): CompileResult;
-export function compile(
-  spec: unknown,
-  opts: CompileLintOptions
-): Promise<CompileLintResult>;
+export function compile(spec: unknown, opts: CompileLintOptions): Promise<CompileLintResult>;
 export function compile(
   optionsOrSpec: CompileOptions | unknown,
   maybeOpts?: CompileLintOptions

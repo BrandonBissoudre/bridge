@@ -41,9 +41,7 @@ function resolveFunction(name: string): unknown {
   const fn = BUILTIN_FUNCTIONS[name];
   if (typeof fn !== "function") {
     throw new Error(
-      `Unknown Spectral function "${name}". Built-in functions: ${Object.keys(
-        BUILTIN_FUNCTIONS
-      )
+      `Unknown Spectral function "${name}". Built-in functions: ${Object.keys(BUILTIN_FUNCTIONS)
         .filter((k) => typeof BUILTIN_FUNCTIONS[k] === "function")
         .concat(Object.keys(BRIDGE_BUILTIN_STUBS))
         .join(", ")}.`
@@ -100,9 +98,7 @@ export async function runRulesAgainstDocument(
           ruleId: "lint-engine/parse-error",
           severity: "error",
           category: "structure",
-          message: `Failed to parse document: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
+          message: `Failed to parse document: ${err instanceof Error ? err.message : String(err)}`,
           path: [],
           source: opts.source,
         },

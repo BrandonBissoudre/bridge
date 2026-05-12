@@ -4,13 +4,7 @@
 // These mirror the public API exported from `@noemuch/bridge-ds-rule-api`
 // for engine-internal use. Public consumers (custom rule authors) should
 // import from the rule-api package directly; this file is private to Bridge.
-import type {
-  Severity,
-  Category,
-  Surface,
-  Status,
-  JsonPath,
-} from "@noemuch/bridge-ds-rule-api";
+import type { Severity, Category, Surface, Status, JsonPath } from "@noemuch/bridge-ds-rule-api";
 
 export interface RuleDef {
   readonly id: string;
