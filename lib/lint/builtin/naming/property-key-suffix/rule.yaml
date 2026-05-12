@@ -1,0 +1,24 @@
+# lib/lint/builtin/naming/property-key-suffix/rule.yaml
+# Non-variant property keys must carry the Figma node-id suffix
+# `#<digits>:<digits>` (e.g. `label#1057:0`). Variant axis keys — whose
+# value is a `VARIANT(...)` string — are exempt, since they bind to a
+# component-set property, not to an individual node. Suffix enforcement
+# delegates to the custom `property-key-has-figma-suffix` function which
+# inspects each key/value pair inside a properties map.
+rules:
+  property-key-suffix:
+    description: "Non-variant property keys must end with `#<digits>:<digits>` (Figma node-id suffix)."
+    given: "$..properties"
+    then:
+      function: property-key-has-figma-suffix
+    severity: warn
+    meta:
+      bridgeApi: "1.x"
+      category: naming
+      surface:
+        - lint-time
+      appliesTo: []
+      status: active
+      rationale: "Figma binds instance-property overrides by node id, not by label. Stripping the `#<digits>:<digits>` suffix from a non-variant property key breaks the override mapping at compile time, so the runtime instance falls back to the master value silently."
+      example: "properties:\n  label#1057:0: \"Bitcoin\"\n  amount#1057:4: \"$42,000\"\n  state: VARIANT(default | loading)   # variant axis, no suffix"
+      since: "1.0.0"

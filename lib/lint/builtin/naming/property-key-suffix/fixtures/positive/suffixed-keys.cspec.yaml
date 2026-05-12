@@ -1,0 +1,8 @@
+name: crypto-card
+archetype: card
+component: CryptoCard
+properties:
+  state: "VARIANT(default | loading | empty)"
+  label#1057:0: "Bitcoin"
+  amount#1057:4: "$42,000"
+  ticker#1057:8: "BTC"

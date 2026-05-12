@@ -1,0 +1,6 @@
+name: bad-button
+archetype: component
+component: BadButton
+properties:
+  intent: "VARIANT(Primary | Secondary | TextDanger)"
+  state: "VARIANT(Default | Loading)"

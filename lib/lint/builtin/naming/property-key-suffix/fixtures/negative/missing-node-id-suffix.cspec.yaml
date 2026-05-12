@@ -1,0 +1,7 @@
+name: bad-card
+archetype: card
+component: BadCard
+properties:
+  state: "VARIANT(default | loading)"
+  label: "Bitcoin"
+  amount: "$42,000"

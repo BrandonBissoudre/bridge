@@ -1,0 +1,19 @@
+[
+  {
+    "fixture": "negative/pascal-variant-values.cspec.yaml",
+    "diagnostics": [
+      {
+        "ruleId": "variant-name-lowercase",
+        "severity": "error",
+        "path": ["properties", "intent"],
+        "messageMatches": "lowercase|kebab|uppercase|variant"
+      },
+      {
+        "ruleId": "variant-name-lowercase",
+        "severity": "error",
+        "path": ["properties", "state"],
+        "messageMatches": "lowercase|kebab|uppercase|variant"
+      }
+    ]
+  }
+]

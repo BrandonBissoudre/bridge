@@ -1,0 +1,25 @@
+# lib/lint/builtin/naming/variant-name-lowercase/rule.yaml
+# Variant values inside `VARIANT(...)` strings must be lowercase or
+# kebab-case (multi-word). Figma's variant properties are case-sensitive
+# at the API layer and mixing PascalCase/camelCase values silently
+# fragments the variant matrix when binding instance properties.
+rules:
+  variant-name-lowercase:
+    description: "Variant values in `VARIANT(...)` must be lowercase or kebab-case (no uppercase letters)."
+    given: "$..properties.*"
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "VARIANT\\([^)]*[A-Z][^)]*\\)"
+    severity: error
+    meta:
+      bridgeApi: "1.x"
+      category: naming
+      surface:
+        - compile-time
+        - lint-time
+      appliesTo: []
+      status: active
+      rationale: "Figma variant property values are case-sensitive. Mixing PascalCase (`Primary`) and lowercase (`primary`) across specs fragments the variant matrix, breaks instance-property binding, and produces non-deterministic component lookups at compile time."
+      example: "state: VARIANT(default | loading | empty)\nintent: VARIANT(primary | secondary | text-danger)"
+      since: "1.0.0"

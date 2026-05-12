@@ -1,0 +1,13 @@
+[
+  {
+    "fixture": "negative/missing-node-id-suffix.cspec.yaml",
+    "diagnostics": [
+      {
+        "ruleId": "property-key-suffix",
+        "severity": "warn",
+        "path": ["properties"],
+        "messageMatches": "suffix|node-id|#[0-9]|figma"
+      }
+    ]
+  }
+]
