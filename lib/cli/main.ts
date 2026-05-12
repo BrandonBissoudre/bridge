@@ -3,6 +3,7 @@ import { doctor } from "./doctor.js";
 import { extractHeadless } from "./extract.js";
 import { runCron } from "../cron/orchestrator.js";
 import { migrate } from "./migrate.js";
+import { lintCommand } from "./lint.js";
 
 export const VERSION = "6.2.2";
 
@@ -17,6 +18,7 @@ Commands:
   extract --headless     Extract DS via Figma REST (requires FIGMA_TOKEN)
   migrate                Migrate a legacy KB to the current schema
   cron                   Run the cron orchestrator (CI entry point)
+  lint                   Lint *.cspec.yaml files against the lint config
   help | version
 `);
 }
@@ -54,6 +56,21 @@ export async function main() {
       case "cron":
         console.log(await runCron({ configPath: "docs.config.yaml" }));
         return;
+      case "lint": {
+        const cfgIdx = process.argv.indexOf("--config");
+        const sevIdx = process.argv.indexOf("--fail-severity");
+        const coverage = process.argv.includes("--coverage");
+        const exit = await lintCommand({
+          configPath:
+            cfgIdx >= 0 ? process.argv[cfgIdx + 1] : "bridge-ds/lint/config.yaml",
+          failSeverity: (sevIdx >= 0 ? process.argv[sevIdx + 1] : "warn") as
+            | "warn"
+            | "error"
+            | "off",
+          coverage,
+        });
+        process.exit(exit);
+      }
       case "migrate": {
         const args = parseFlags([sub, ...rest]);
         const kbPath = args.get("kb-path") ?? ".";
