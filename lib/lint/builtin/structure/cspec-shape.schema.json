@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bridge-ds.dev/schemas/cspec.json",
+  "title": "CSpec",
+  "description": "Bridge component specification.",
+  "type": "object",
+  "required": ["name", "archetype", "component"],
+  "additionalProperties": true,
+  "properties": {
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "archetype": {
+      "type": "string",
+      "examples": ["card", "screen", "list-item", "tag", "button"]
+    },
+    "component": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+    "properties": {
+      "type": "object",
+      "additionalProperties": { "type": ["string", "number", "boolean", "null"] }
+    },
+    "tokens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": { "name": { "type": "string", "pattern": "^\\$" } }
+      }
+    },
+    "children": { "type": "array" },
+    "snapshot": { "type": ["string", "null"] }
+  }
+}
