@@ -1,5 +1,10 @@
 // packages/rule-api/src/types.ts
 // FROZEN PUBLIC API — semver-protected. Do not break in minor versions.
+//
+// Closed string unions (Severity, Category, Surface, Status) are intentional.
+// Adding a value to any of them is a MAJOR version bump for this package —
+// consumers that narrowed on the existing values would silently miss the new
+// case. If you need to extend, ship v2 with a migration note.
 
 export type Severity = "off" | "hint" | "info" | "warn" | "error";
 
