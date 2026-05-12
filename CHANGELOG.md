@@ -2,6 +2,36 @@
 
 All notable changes to Bridge DS are documented here.
 
+## [7.0.0] — 2026-05-12
+
+DS rules engine. Bridge ships a Spectral-based rules runtime that enforces design-system conventions across three surfaces: the compiler, a new `bridge-ds lint` CLI, and a skill-overlay layer that injects active rules into Claude Code at generation time.
+
+### Added
+
+- **`lib/lint/` runtime** wrapping `@stoplight/spectral-core` — rules engine, config loader, coverage reporter, skill-overlay renderer.
+- **`@noemuch/bridge-ds-rule-api`** workspace package — frozen public TS API for authoring custom rules. Semver-protected (closed unions for Severity/Category/Surface/Status are intentional; adding a value is a major bump).
+- **18 universal built-in rules** in `lib/lint/builtin/` across 6 categories (tokens, structure, naming, interaction, workflow, copy). Bundled in `bridge:recommended` and `bridge:strict` presets.
+- **`bridge-ds lint` CLI command** with `--config`, `--fail-severity`, `--coverage` flags.
+- **Compiler integration** — `CompileOptions.lintConfigPath` makes the compiler load + apply compile-time rules and fail-fast on `severity: error`. Exposed via an async overload of `compile()`; the legacy sync `compile(options)` form is preserved for v6 callers.
+- **Skill overlay** — `{{ACTIVE_RULES}}` placeholder in `SKILL.md` of `generating-figma-design`, `learning-from-corrections`, `shipping-and-archiving`. Rendered by `hooks/skill-load`. Top-of-file placement + structured `[ID] RULE — RATIONALE — EXAMPLE` triples based on IFEval / AdvancedIF / Lost-in-the-Middle research.
+- **DTCG 2025.10 schema rule** as a built-in (warn-severity).
+- **Custom-function stubs** for the 10 placeholders referenced by built-in rules (one-time warn per stub; consumers can override with real impls).
+
+### Changed
+
+- `package.json` adds `@stoplight/spectral-core`, `@stoplight/spectral-functions`, `@stoplight/spectral-rulesets`, `ajv`, `ajv-formats` as deps.
+- `package.json` declares `workspaces: ["packages/*"]`.
+- `lib/cli/main.ts` registers the `lint` subcommand.
+- `build` script now copies yaml + json resources from `lib/lint/builtin/` into `dist/` post-tsc so the published package can resolve `bridge:recommended` and other rule files at runtime.
+
+### Backward compatibility
+
+**v6 → v7 is opt-in. Existing consumers see no behavioural change unless they create `bridge-ds/lint/config.yaml`.** Compiler, skills, and cron run as before when the file is absent. The legacy sync `compile(options)` form is preserved — v7 adds an async overload for the new lint-aware path.
+
+### Migration
+
+See `BREAKING.md`.
+
 ## [6.2.2] — 2026-05-11
 
 Hotfix on top of 6.2.1: catch orphan variants whose parent set isn't published.
