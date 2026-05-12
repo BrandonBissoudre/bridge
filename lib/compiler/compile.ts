@@ -11,8 +11,10 @@ import { generateCode } from "./codegen.js";
 import { fontLoader } from "./helpers.js";
 import { wrapChunk, wrapConsole, wrapOfficial } from "./wrap.js";
 import { CompilerError } from "./errors.js";
+import { runLintAtCompileTime } from "../lint/compile-bridge.js";
 import type { Transport } from "./wrap.js";
 import type { CodegenContext } from "./codegen.js";
+import type { LintDiagnostic } from "../lint/types.js";
 
 // ---------------------------------------------------------------------------
 // PUBLIC TYPES
@@ -51,14 +53,90 @@ export interface CompileResult {
   plan: CompilePlanSummary | null;
 }
 
+/**
+ * Options accepted by the spec-first `compile(spec, opts)` overload
+ * introduced in v7. Used to gate compilation on `surface: compile-time`
+ * lint rules before the scene graph is emitted.
+ */
+export interface CompileLintOptions {
+  /** Path to a `bridge-lint.config.yaml` file. */
+  lintConfigPath?: string;
+}
+
+/**
+ * Result returned by the spec-first `compile(spec, opts)` overload.
+ *
+ * Mirrors {@link CompileResult} in spirit but uses `ok` (truthy on success)
+ * and exposes blocking lint diagnostics directly instead of wrapping them
+ * in {@link CompilerError}. `sceneGraph` is `null` whenever lint blocks
+ * before scene-graph emission.
+ */
+export interface CompileLintResult {
+  ok: boolean;
+  errors: LintDiagnostic[];
+  sceneGraph: null;
+}
+
 // ---------------------------------------------------------------------------
 // compile()
 // ---------------------------------------------------------------------------
 
 /**
  * Compile a scene graph JSON into executable Figma Plugin API chunks.
+ *
+ * Two calling conventions are supported:
+ *
+ * 1. **Legacy (sync)** — `compile(options)` where `options` is a
+ *    {@link CompileOptions} object containing `input` + `kbPath`. Returns a
+ *    {@link CompileResult} synchronously. This is the path used by the
+ *    `bridge-ds compile` CLI and by all v6 callers.
+ *
+ * 2. **Spec-first (async)** — `compile(spec, opts)` where `spec` is a raw
+ *    CSpec document and `opts` is a {@link CompileLintOptions} carrying a
+ *    `lintConfigPath`. Returns a {@link CompileLintResult} that surfaces
+ *    blocking lint diagnostics without touching the scene-graph pipeline.
  */
-export function compile(options: CompileOptions): CompileResult {
+export function compile(options: CompileOptions): CompileResult;
+export function compile(
+  spec: unknown,
+  opts: CompileLintOptions
+): Promise<CompileLintResult>;
+export function compile(
+  optionsOrSpec: CompileOptions | unknown,
+  maybeOpts?: CompileLintOptions
+): CompileResult | Promise<CompileLintResult> {
+  // Spec-first overload: second positional argument is present.
+  if (maybeOpts !== undefined) {
+    return compileWithLint(optionsOrSpec, maybeOpts);
+  }
+  return compileLegacy(optionsOrSpec as CompileOptions);
+}
+
+/**
+ * Spec-first compile path: runs compile-time lint rules against a raw
+ * CSpec doc and short-circuits on any `severity: error` violation. When no
+ * lint config is configured (or the path doesn't exist) this is a no-op
+ * that preserves v6 behaviour.
+ *
+ * Scene-graph emission for the CSpec is intentionally not invoked here:
+ * Task 16 wires lint as a hard gate; downstream scene-graph emission will
+ * be wired in a follow-up once the CSpec → scene-graph compiler exists.
+ */
+async function compileWithLint(
+  spec: unknown,
+  opts: CompileLintOptions
+): Promise<CompileLintResult> {
+  if (opts.lintConfigPath) {
+    const lintResult = await runLintAtCompileTime(spec, opts.lintConfigPath);
+    const blocking = lintResult.diagnostics.filter((d) => d.severity === "error");
+    if (blocking.length > 0) {
+      return { ok: false, errors: blocking.slice(), sceneGraph: null };
+    }
+  }
+  return { ok: true, errors: [], sceneGraph: null };
+}
+
+function compileLegacy(options: CompileOptions): CompileResult {
   const opts = options ?? ({} as CompileOptions);
   const transport: Transport = opts.transport ?? "console";
   const fileKey: string | null = opts.fileKey ?? null;
