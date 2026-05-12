@@ -1,0 +1,65 @@
+#!/usr/bin/env node
+// hooks/skill-load — called by Claude Code plugin host before skill is exposed.
+// Reads each SKILL.md, substitutes {{ACTIVE_RULES}} placeholder using overlay.ts.
+const { readFile } = require("node:fs/promises");
+const path = require("node:path");
+const { renderSkillOverlay } = require("../dist/lib/lint/overlay.js");
+const { loadConfig } = require("../dist/lib/lint/loader.js");
+
+(async () => {
+  const skillsDir = path.resolve(__dirname, "../skills");
+  const consumerConfig = path.resolve(process.cwd(), "bridge-ds/lint/config.yaml");
+
+  // Identify which skill is being loaded (host provides via env)
+  const skillName = process.env.SKILL_NAME;
+  const archetype = process.env.SKILL_REQUEST_ARCHETYPE;
+
+  if (!skillName) {
+    console.error("hooks/skill-load: SKILL_NAME env var not set; exiting.");
+    process.exit(1);
+  }
+
+  const skillMd = path.join(skillsDir, skillName, "SKILL.md");
+  let content;
+  try {
+    content = await readFile(skillMd, "utf-8");
+  } catch (err) {
+    console.error(`hooks/skill-load: cannot read ${skillMd}: ${err.message}`);
+    process.exit(1);
+  }
+
+  if (!content.includes("{{ACTIVE_RULES}}")) {
+    process.stdout.write(content);
+    return;
+  }
+
+  // Load the consumer's lint config (may be absent)
+  let rules = {};
+  try {
+    const cfg = await loadConfig(consumerConfig);
+    if (cfg?.rules) {
+      // Filter to RuleDef objects (skip "off" strings)
+      for (const [id, r] of Object.entries(cfg.rules)) {
+        if (r !== "off") rules[id] = { ...r, id };
+      }
+    }
+  } catch (err) {
+    console.error(`hooks/skill-load: warning, failed to load lint config: ${err.message}`);
+    // Continue with empty rules (placeholder substituted with empty overlay)
+  }
+
+  const overlay = renderSkillOverlay({
+    rules,
+    request: { archetype },
+  });
+
+  // If no rules matched, replace placeholder with empty string (no scaffolding noise)
+  const substituted = Object.keys(rules).length === 0
+    ? content.replace(/{{ACTIVE_RULES}}\s*\n?/, "")
+    : content.replace("{{ACTIVE_RULES}}", overlay);
+
+  process.stdout.write(substituted);
+})().catch((err) => {
+  console.error(`hooks/skill-load: unhandled error: ${err.message}`);
+  process.exit(1);
+});

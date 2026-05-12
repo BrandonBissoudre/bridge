@@ -3,6 +3,8 @@ name: learning-from-corrections
 description: Use when the user says they adjusted the design in Figma, mentions "fix", "correct", "learn from", "I changed", "diff", "what changed", or wants the system to incorporate manual Figma edits back into the spec. Diffs the current Figma state against the last snapshot, classifies each change as a DS learning or a hardcoded flag, persists learnings, and patches the active recipe.
 ---
 
+{{ACTIVE_RULES}}
+
 # Learning From Corrections
 
 ## Overview

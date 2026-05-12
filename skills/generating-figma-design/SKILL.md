@@ -3,6 +3,8 @@ name: generating-figma-design
 description: Use when the user requests to design, create, build, generate, or make a new Figma component or screen — including phrases like "make a button", "design a settings page", "build a new card", "generate X". Produces a CSpec, compiles it to a scene graph, executes it in Figma via MCP, and verifies the output.
 ---
 
+{{ACTIVE_RULES}}
+
 # Generating Figma Design
 
 ## Overview

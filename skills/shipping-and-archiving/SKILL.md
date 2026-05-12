@@ -3,6 +3,8 @@ name: shipping-and-archiving
 description: Use when the user says "done", "ship it", "finish", "complete", "archive", or otherwise indicates the current design is ready to be shipped. Runs final verification (Gate B), archives the CSpec, updates history, extracts a recipe when eligible, and cleans up temp files.
 ---
 
+{{ACTIVE_RULES}}
+
 # Shipping And Archiving
 
 ## Overview
