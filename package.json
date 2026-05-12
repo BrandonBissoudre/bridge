@@ -40,7 +40,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/copy-builtin-resources.js",
     "build:watch": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"lib/**/*.ts\" \"test/**/*.ts\"",
