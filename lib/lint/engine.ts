@@ -68,76 +68,89 @@ export async function runRulesAgainstDocument(
   opts: RunOptions
 ): Promise<LintResult> {
   const customFunctions = opts.customFunctions ?? [];
-  const spectral = new Spectral();
-  const spectralRuleset: Record<string, unknown> = {};
 
+  // We serialize once and reuse the JSON string across per-rule Spectral
+  // instances. Document is cheap to reconstruct and not safe to share across
+  // Spectral.run() invocations.
+  const serialized = JSON.stringify(document);
+
+  const diagnostics: LintDiagnostic[] = [];
+
+  // Per-rule isolation. v7.0.1 ran all rules through one Spectral instance;
+  // when a single rule's JSONPath crashed (typically nimma's filter expression
+  // against an array containing null elements), the whole batch was lost and
+  // the outer catch synthesized a misleading `lint-engine/parse-error`. v7.0.2
+  // runs each rule in its own Spectral instance so a crash is contained to
+  // that rule. ~50-100ms extra per doc on a 43-rule corpus — acceptable.
   for (const [id, rule] of Object.entries(ruleset.rules)) {
     // Filter `off` rules before handing to Spectral. Spectral's severity -1 is
     // undefined behavior — it may still execute rules. Skipping here is the
     // only safe way to disable a rule.
     if (rule.severity === "off") continue;
-    spectralRuleset[id] = {
-      description: rule.description,
-      given: rule.given,
-      then: {
-        ...(rule.then.field !== undefined ? { field: rule.then.field } : {}),
-        function: resolveFunction(rule.then.function, customFunctions),
-        functionOptions: rule.then.functionOptions,
-      },
-      severity: SPECTRAL_SEVERITY[rule.severity],
-    };
-  }
 
-  spectral.setRuleset({
-    rules: spectralRuleset as never,
-  } as never);
+    const spectral = new Spectral();
+    try {
+      spectral.setRuleset({
+        rules: {
+          [id]: {
+            description: rule.description,
+            given: rule.given,
+            then: {
+              ...(rule.then.field !== undefined ? { field: rule.then.field } : {}),
+              function: resolveFunction(rule.then.function, customFunctions),
+              functionOptions: rule.then.functionOptions,
+            },
+            severity: SPECTRAL_SEVERITY[rule.severity],
+          },
+        } as never,
+      } as never);
+    } catch (err) {
+      // Unknown function / malformed `then` — surface as a rule-crash so the
+      // operator sees the offending rule name instead of a parse-error.
+      diagnostics.push({
+        ruleId: "lint-engine/rule-crash",
+        severity: "warn",
+        category: "structure",
+        message: `Rule "${id}" failed to load: ${err instanceof Error ? err.message : String(err)}.`,
+        path: [],
+        source: opts.source,
+      });
+      continue;
+    }
 
-  const doc = new Document(JSON.stringify(document), JsonParser, opts.source);
-  // Defensive try/catch: the input is already a JS object that we JSON.stringify
-  // ourselves, so the JSON parser should never throw in practice. We still wrap
-  // to surface any future parser-source errors as structured diagnostics rather
-  // than raw exceptions. Hard to unit-test without mocking.
-  let spectralResults;
-  try {
-    spectralResults = await spectral.run(doc);
-  } catch (err) {
-    return {
-      diagnostics: [
-        {
-          ruleId: "lint-engine/parse-error",
-          severity: "error",
-          category: "structure",
-          message: `Failed to parse document: ${err instanceof Error ? err.message : String(err)}`,
-          path: [],
-          source: opts.source,
-        },
-      ],
-      coverage: {
-        byCategory: {} as never,
-        overall: {
-          passed: 0,
-          failed: 1,
-          total: Object.keys(ruleset.rules).length,
-        },
-      },
-    };
-  }
+    const doc = new Document(serialized, JsonParser, opts.source);
+    let spectralResults;
+    try {
+      spectralResults = await spectral.run(doc);
+    } catch (err) {
+      // Most common cause: nimma JSONPath filter crashes when the targeted
+      // array contains null elements (e.g. `[?(@.type == 'X')]` against
+      // `[null, {...}]`). We emit a rule-specific warning rather than killing
+      // the whole batch.
+      diagnostics.push({
+        ruleId: "lint-engine/rule-crash",
+        severity: "warn",
+        category: "structure",
+        message: `Rule "${id}" crashed during evaluation: ${
+          err instanceof Error ? err.message : String(err)
+        }. The rule is likely using a JSONPath filter that doesn't handle null elements — consider tightening with [?(@ && @.field == ...)].`,
+        path: [],
+        source: opts.source,
+      });
+      continue;
+    }
 
-  const diagnostics: LintDiagnostic[] = [];
-  for (const r of spectralResults) {
-    const ruleId = r.code as string;
-    const rule = ruleset.rules[ruleId];
-    // Spectral may emit diagnostics for internal/alias rules we don't own
-    // (e.g. when ruleset composition expands a rule). Guard against undefined.
-    if (!rule) continue;
-    diagnostics.push({
-      ruleId,
-      severity: rule.severity,
-      category: toCategory(rule),
-      message: r.message,
-      path: r.path as never,
-      source: opts.source,
-    });
+    for (const r of spectralResults) {
+      const ruleId = (r.code as string) ?? id;
+      diagnostics.push({
+        ruleId,
+        severity: rule.severity,
+        category: toCategory(rule),
+        message: r.message,
+        path: r.path as never,
+        source: opts.source,
+      });
+    }
   }
 
   const total = Object.keys(ruleset.rules).length;

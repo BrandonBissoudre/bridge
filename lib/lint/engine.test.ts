@@ -87,6 +87,51 @@ test("runRulesAgainstDocument skips rules with severity 'off'", async () => {
   assert.equal(result.diagnostics.length, 0);
 });
 
+test("runRulesAgainstDocument isolates per-rule crashes — one bad JSONPath doesn't kill the batch", async () => {
+  const ruleset = {
+    rules: {
+      "crashes-on-null": {
+        description: "Filter with null-vulnerable JSONPath",
+        given: "$.items[?(@.type == 'X')]",
+        then: { function: "truthy" },
+        severity: "error" as const,
+        meta: {
+          bridgeApi: "1.x",
+          category: "structure" as const,
+          surface: ["lint-time" as const],
+          status: "active" as const,
+          since: "1.0.0",
+        },
+      },
+      "always-passes": {
+        description: "Innocuous rule",
+        given: "$.value",
+        then: { function: "pattern", functionOptions: { match: ".*" } },
+        severity: "error" as const,
+        meta: {
+          bridgeApi: "1.x",
+          category: "structure" as const,
+          surface: ["lint-time" as const],
+          status: "active" as const,
+          since: "1.0.0",
+        },
+      },
+    },
+  };
+
+  const docWithNulls = { items: [null, { type: "X" }, null], value: "ok" };
+  const result = await runRulesAgainstDocument(ruleset, docWithNulls, { source: "test" });
+
+  // The crashing rule should produce a lint-engine/rule-crash warning,
+  // and always-passes should still have run cleanly (no diagnostic on a passing doc).
+  const crashDiag = result.diagnostics.find((d) => d.ruleId === "lint-engine/rule-crash");
+  assert.ok(crashDiag, "rule-crash diagnostic missing");
+  assert.match(crashDiag!.message, /crashes-on-null/);
+  // always-passes is innocuous on this doc → no diagnostic from it
+  const passDiag = result.diagnostics.find((d) => d.ruleId === "always-passes");
+  assert.equal(passDiag, undefined);
+});
+
 test("runRulesAgainstDocument fires multiple rules at differing severities", async () => {
   const ruleset = {
     rules: {

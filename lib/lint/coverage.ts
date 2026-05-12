@@ -48,7 +48,11 @@ export function renderCoverage(report: CoverageReport): string {
   lines.push("Bridge KB coverage:");
   lines.push("");
   for (const cat of ALL_CATEGORIES) {
-    const r = report.byCategory[cat];
+    // Defensive fallback: a caller may hand us a partial `byCategory` map
+    // (e.g. constructed in tests or by an older code path that didn't
+    // initialize all 7 categories). Without the fallback we crash with
+    // `Cannot read properties of undefined (reading 'total')`.
+    const r = report.byCategory[cat] ?? { passed: 0, failed: 0, total: 0 };
     if (r.total === 0) continue;
     const pct = Math.round((r.passed / r.total) * 100);
     const bar = "█".repeat(Math.round(pct / 5)).padEnd(20, "░");

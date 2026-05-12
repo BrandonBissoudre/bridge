@@ -33,6 +33,16 @@ test("renderCoverage handles empty input", () => {
   assert.doesNotMatch(out, /naming\s/);
 });
 
+test("renderCoverage handles partial byCategory map", () => {
+  const r = renderCoverage({
+    byCategory: { tokens: { passed: 1, failed: 0, total: 1 } } as never,
+    overall: { passed: 1, failed: 0, total: 1 },
+  });
+  assert.match(r, /tokens/);
+  assert.match(r, /100%/);
+  // Should not crash on the 6 missing categories
+});
+
 test("renderCoverage emits per-category lines and totals for non-empty input", () => {
   const result = computeCoverage({
     rules: {

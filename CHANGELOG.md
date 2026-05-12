@@ -2,6 +2,29 @@
 
 All notable changes to Bridge DS are documented here.
 
+## [7.0.2] — 2026-05-12
+
+### Fixed
+
+- **Per-rule crash isolation.** Previously, one rule with a null-vulnerable
+  JSONPath filter (`[?(@.field == ...)]` against an array with null elements)
+  crashed the entire document-level lint pass; all rules from that file were
+  lost with a generic `lint-engine/parse-error`. v7.0.2 runs each rule in its
+  own Spectral instance, so a crash is contained — the offending rule emits
+  a structured `lint-engine/rule-crash` warning naming itself, and every
+  other rule still produces its normal diagnostics.
+- **Coverage renderer crash on partial category maps.** `renderCoverage`
+  defensively falls back to `{ passed: 0, failed: 0, total: 0 }` when a
+  category is missing from `byCategory`, fixing
+  `Cannot read properties of undefined (reading 'total')` in CI summaries.
+
+### Performance note
+
+Per-rule isolation creates N Spectral instances per doc instead of 1. On a
+typical 43-rule corpus this adds ~50-100ms per CSpec — negligible at lint
+scale. If a consumer experiences regressions on very large repos, file an
+issue and we'll add memoization.
+
 ## [7.0.1] — 2026-05-12
 
 ### Fixed
