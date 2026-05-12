@@ -1,0 +1,36 @@
+[
+  {
+    "fixture": "negative/missing-archetype.cspec.yaml",
+    "diagnostics": [
+      {
+        "ruleId": "spec-required-fields",
+        "severity": "error",
+        "path": ["archetype"],
+        "messageMatches": "archetype|truthy|required"
+      }
+    ]
+  },
+  {
+    "fixture": "negative/missing-all.cspec.yaml",
+    "diagnostics": [
+      {
+        "ruleId": "spec-required-fields",
+        "severity": "error",
+        "path": ["name"],
+        "messageMatches": "name|truthy|required"
+      },
+      {
+        "ruleId": "spec-required-fields",
+        "severity": "error",
+        "path": ["archetype"],
+        "messageMatches": "archetype|truthy|required"
+      },
+      {
+        "ruleId": "spec-required-fields",
+        "severity": "error",
+        "path": ["component"],
+        "messageMatches": "component|truthy|required"
+      }
+    ]
+  }
+]

@@ -1,0 +1,27 @@
+# lib/lint/builtin/workflow/ship-bundle-completeness/rule.yaml
+# Workflow rule — invoked by the shipping skill against a commit-bundle
+# document (synthesized by the runner from `git diff --name-only`). The custom
+# function `ship-bundle-complete` enforces the trio: spec yaml, snapshot json,
+# and history.log update must all be present in the same commit.
+rules:
+  ship-bundle-completeness:
+    description: "A ship commit must include spec + snapshot + history.log update."
+    given: "$"
+    then:
+      function: ship-bundle-complete
+      functionOptions:
+        requires:
+          - "spec"
+          - "snapshot"
+          - "history"
+    severity: error
+    meta:
+      bridgeApi: "1.x"
+      category: workflow
+      surface:
+        - lint-time
+      appliesTo: []
+      status: active
+      rationale: "Shipping is a three-part atomic transaction — the spec freezes the contract, the snapshot freezes the Figma output, history.log freezes the audit trail. A partial bundle leaves the system in an inconsistent state."
+      example: "git add spec.cspec.yaml spec-snapshot.json history.log && git commit -m 'ship: ...'"
+      since: "1.0.0"

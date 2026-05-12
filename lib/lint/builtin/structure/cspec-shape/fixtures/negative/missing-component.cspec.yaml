@@ -1,0 +1,4 @@
+name: crypto-card
+archetype: card
+properties:
+  variant: default

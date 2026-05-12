@@ -1,0 +1,22 @@
+# lib/lint/builtin/naming/spec-filename-kebab/rule.yaml
+# Filename-level rule — the document content is irrelevant; the runner passes
+# the source filename into the custom `filename-pattern` function.
+rules:
+  spec-filename-kebab:
+    description: "CSpec filenames must be kebab-case and end with `.cspec.yaml`."
+    given: "$"
+    then:
+      function: filename-pattern
+      functionOptions:
+        match: "^[a-z][a-z0-9-]*(-[a-z0-9]+)*\\.cspec\\.yaml$"
+    severity: error
+    meta:
+      bridgeApi: "1.x"
+      category: naming
+      surface:
+        - lint-time
+      appliesTo: []
+      status: active
+      rationale: "Kebab-case `.cspec.yaml` filenames let recipe loaders, history.log entries, and snapshot pairing use a single canonical key — mixing PascalCase or camelCase breaks deterministic file pairing across tools."
+      example: "crypto-card.cspec.yaml  (good)\nCryptoCard.cspec.yaml   (bad)"
+      since: "1.0.0"

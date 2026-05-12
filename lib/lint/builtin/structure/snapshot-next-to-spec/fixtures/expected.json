@@ -1,0 +1,13 @@
+[
+  {
+    "fixture": "negative/missing-snapshot.cspec.yaml",
+    "diagnostics": [
+      {
+        "ruleId": "snapshot-next-to-spec",
+        "severity": "warn",
+        "path": [],
+        "messageMatches": "snapshot|sibling|missing"
+      }
+    ]
+  }
+]

@@ -1,0 +1,4 @@
+name: welcome
+archetype: screen
+component: WelcomeScreen
+snapshot: ./welcome-snapshot.json

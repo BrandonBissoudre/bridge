@@ -1,0 +1,7 @@
+{
+  "commit": "ghi789",
+  "files": [
+    "workspaces/design-system/specs/shipped/crypto-card.cspec.yaml",
+    "workspaces/design-system/specs/shipped/crypto-card-snapshot.json"
+  ]
+}

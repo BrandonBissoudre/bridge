@@ -1,0 +1,27 @@
+# lib/lint/builtin/structure/snapshot-next-to-spec/rule.yaml
+# Filesystem rule — the document is inspected for its `__source` path (injected
+# by the lint runner) and the sibling `<name>-snapshot.json` must exist. The
+# custom function `snapshot-exists` reads the filesystem; declared here only,
+# implemented by Task 14's runner.
+rules:
+  snapshot-next-to-spec:
+    description: "Shipped CSpecs must have a sibling `<name>-snapshot.json` file."
+    given: "$"
+    then:
+      function: snapshot-exists
+      functionOptions:
+        # Only enforce inside `shipped/` workspaces — active/backlog/dropped
+        # are work-in-progress and may not yet have a snapshot.
+        scope: shipped
+        suffix: "-snapshot.json"
+    severity: warn
+    meta:
+      bridgeApi: "1.x"
+      category: structure
+      surface:
+        - lint-time
+      appliesTo: []
+      status: active
+      rationale: "A shipped CSpec without its frozen snapshot is unreproducible — replays, diffs, and learning-from-corrections all rely on the snapshot as the canonical post-ship Figma state."
+      example: "specs/shipped/f1/welcome.cspec.yaml\nspecs/shipped/f1/welcome-snapshot.json"
+      since: "1.0.0"

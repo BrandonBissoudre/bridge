@@ -1,0 +1,25 @@
+# lib/lint/builtin/structure/cspec-shape/rule.yaml
+# Validates the entire CSpec document against the JSON Schema 2020-12 contract.
+# The schema is co-located one directory up so both compile-time and lint-time
+# loaders share a single source of truth.
+rules:
+  cspec-shape:
+    description: "CSpec must conform to the JSON Schema 2020-12 contract."
+    given: "$"
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          $ref: "../cspec-shape.schema.json"
+    severity: error
+    meta:
+      bridgeApi: "1.x"
+      category: structure
+      surface:
+        - compile-time
+        - lint-time
+      appliesTo: []
+      status: active
+      rationale: "Schema validation catches malformed specs (missing required keys, wrong types, invalid name shapes) before the compiler runs — a single declarative contract used identically by every Bridge tool."
+      example: "name: crypto-card\narchetype: card\ncomponent: CryptoCard"
+      since: "1.0.0"

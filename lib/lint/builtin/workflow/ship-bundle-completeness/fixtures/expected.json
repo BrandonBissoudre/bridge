@@ -1,0 +1,24 @@
+[
+  {
+    "fixture": "negative/missing-snapshot.json",
+    "diagnostics": [
+      {
+        "ruleId": "ship-bundle-completeness",
+        "severity": "error",
+        "path": [],
+        "messageMatches": "snapshot|bundle|incomplete"
+      }
+    ]
+  },
+  {
+    "fixture": "negative/missing-history.json",
+    "diagnostics": [
+      {
+        "ruleId": "ship-bundle-completeness",
+        "severity": "error",
+        "path": [],
+        "messageMatches": "history|bundle|incomplete"
+      }
+    ]
+  }
+]

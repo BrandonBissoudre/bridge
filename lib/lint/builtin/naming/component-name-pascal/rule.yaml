@@ -1,0 +1,24 @@
+# lib/lint/builtin/naming/component-name-pascal/rule.yaml
+# Validates the PascalCase identifier used to reference the DS component.
+# Targets `$.component` directly — Spectral's `pattern` runs against the value.
+rules:
+  component-name-pascal:
+    description: "The `component` field must be PascalCase (`^[A-Z][A-Za-z0-9]*$`)."
+    given: "$.component"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[A-Z][A-Za-z0-9]*$"
+    severity: warn
+    meta:
+      bridgeApi: "1.x"
+      category: naming
+      surface:
+        - lint-time
+        - skill-overlay
+      appliesTo: []
+      status: active
+      rationale: "DS component names are PascalCase by convention (CryptoCard, ListGroupHeader). camelCase or kebab-case in the spec breaks the lookup against the components registry."
+      example: "component: CryptoCard"
+      prompt: "Always reference DS components in PascalCase (CryptoCard, StepperItem) — never kebab-case or camelCase. This is how the component registry resolves the lookup."
+      since: "1.0.0"

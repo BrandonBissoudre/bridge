@@ -1,0 +1,26 @@
+# lib/lint/builtin/structure/spec-required-fields/rule.yaml
+# Surfaces missing top-level keys with a precise, per-field diagnostic.
+# `cspec-shape` would also catch these via JSON Schema's `required`, but a
+# dedicated rule lets us point the diagnostic path at the missing key itself
+# and emit a tailored message ("Required field 'component' is missing.").
+rules:
+  spec-required-fields:
+    description: "Top-level keys `name`, `archetype`, and `component` are required."
+    given:
+      - "$.name"
+      - "$.archetype"
+      - "$.component"
+    then:
+      function: truthy
+    severity: error
+    meta:
+      bridgeApi: "1.x"
+      category: structure
+      surface:
+        - compile-time
+        - lint-time
+      appliesTo: []
+      status: active
+      rationale: "These three keys identify a spec (filename anchor, archetype routing, target DS component). Missing any of them blocks the compiler — fail fast with a field-level message."
+      example: "name: crypto-card\narchetype: card\ncomponent: CryptoCard"
+      since: "1.0.0"

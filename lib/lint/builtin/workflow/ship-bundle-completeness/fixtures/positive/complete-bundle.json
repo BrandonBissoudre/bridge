@@ -1,0 +1,8 @@
+{
+  "commit": "abc123",
+  "files": [
+    "workspaces/design-system/specs/shipped/crypto-card.cspec.yaml",
+    "workspaces/design-system/specs/shipped/crypto-card-snapshot.json",
+    "history.log"
+  ]
+}

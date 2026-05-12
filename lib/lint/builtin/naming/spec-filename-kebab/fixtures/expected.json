@@ -1,0 +1,24 @@
+[
+  {
+    "fixture": "negative/CryptoCard.cspec.yaml",
+    "diagnostics": [
+      {
+        "ruleId": "spec-filename-kebab",
+        "severity": "error",
+        "path": [],
+        "messageMatches": "filename|kebab|pattern"
+      }
+    ]
+  },
+  {
+    "fixture": "negative/crypto_card.cspec.yaml",
+    "diagnostics": [
+      {
+        "ruleId": "spec-filename-kebab",
+        "severity": "error",
+        "path": [],
+        "messageMatches": "filename|kebab|pattern"
+      }
+    ]
+  }
+]
