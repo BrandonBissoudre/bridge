@@ -47,5 +47,6 @@ export async function runLintAtCompileTime(spec: unknown, configPath: string): P
   return runRulesAgainstDocument({ rules: compileRules }, spec, {
     source: "<cspec>",
     customFunctions,
+    cwd: process.cwd(),
   });
 }

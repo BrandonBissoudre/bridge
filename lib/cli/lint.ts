@@ -51,6 +51,7 @@ export async function lintCommand(opts: LintCliOpts): Promise<number> {
     const res = await runRulesAgainstDocument({ rules: allRules }, doc, {
       source: path.relative(process.cwd(), specPath),
       customFunctions,
+      cwd: process.cwd(),
     });
     allDiagnostics.push(...res.diagnostics);
   }

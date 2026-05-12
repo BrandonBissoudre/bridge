@@ -2,6 +2,57 @@
 
 All notable changes to Bridge DS are documented here.
 
+## [7.1.0] — 2026-05-12
+
+### Added
+
+- **Real implementations for 5 universal built-in Spectral functions.**
+  v7.0 shipped these as no-op stubs so the `bridge:recommended` preset
+  could load without crashing; v7.1.0 makes them enforce:
+  - `text-is-english` — heuristic French-stopword detector (curated for
+    DS copy: button labels, helper text, microcopy). Fires when 2+ French
+    markers appear; `functionOptions.allowList` suppresses listed words,
+    `functionOptions.threshold` overrides the default of 2.
+  - `snapshot-exists` — checks that every `<name>.cspec.yaml` has a
+    sibling `<name>-snapshot.json`. Reads the file path from
+    `context.document.source`; resolves relative paths against the
+    consumer cwd.
+  - `filename-pattern` — regex wrapper on the source filename. Supports
+    `match` (must match) and `notMatch` (must not match) options.
+  - `property-key-has-figma-suffix` — validates each key in a
+    `properties` map. Non-variant keys (where the value is not a
+    `VARIANT(...)` string) must end with `#<digits>:<digits>`, the
+    Figma node-id suffix used for instance-override binding.
+  - `rule-has-bridge-api` — meta-rule for rule definitions. Requires
+    every custom rule's `meta.bridgeApi` to be present and shaped like
+    a semver range (`1.x`, `1.0.x`, `^1.0.0`, etc.).
+
+### Changed
+
+- **`builtin-functions.ts` refactored from static record to factory.**
+  Previously exported `BRIDGE_BUILTIN_STUBS: Record<string, Fn>`. Now
+  exports `buildBridgeBuiltinFunctions(ctx: BridgeBuiltinContext)` which
+  returns a fresh function map per call. The context carries `cwd` and
+  optional `kbPath` so future KB-bound implementations can close over
+  per-consumer state. The engine builds the map once per
+  `runRulesAgainstDocument` invocation. The CLI (`bridge-ds lint`) and
+  compile-time wrapper now thread `cwd: process.cwd()` through to the
+  engine.
+
+- **Custom function messages now reach the diagnostic output.** The engine
+  configures each rule with Spectral's `message: "{{error}}"` template, so
+  a function returning `[{ message: "X" }]` produces a diagnostic with
+  message `"X"`. Previously Spectral silently overwrote it with the rule's
+  `description`, which made specifics from custom functions invisible.
+  Falls back to `description` when the function provides no message.
+
+### Note
+
+The remaining 5 functions (`token-exists-in-kb`, `token-not-deprecated`,
+`interaction-token-is-float`, `ship-bundle-complete`, `recipe-eligible`)
+are still stubs in v7.1.0 — they need a parsed knowledge base and will
+ship in a follow-up patch that reads the consumer's `bridge-ds/knowledge-base/`.
+
 ## [7.0.2] — 2026-05-12
 
 ### Fixed

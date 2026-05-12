@@ -4,12 +4,20 @@ import * as functions from "@stoplight/spectral-functions";
 import { Json as JsonParser } from "@stoplight/spectral-parsers";
 import type { RuleDef, LintDiagnostic, LintResult } from "./types.js";
 import type { Category, Severity } from "@noemuch/bridge-ds-rule-api";
-import { BRIDGE_BUILTIN_STUBS } from "./builtin-functions.js";
+import { buildBridgeBuiltinFunctions } from "./builtin-functions.js";
 import type { LoadedFunction } from "./load-custom-functions.js";
 
 interface RunOptions {
   readonly source: string;
   readonly customFunctions?: ReadonlyArray<LoadedFunction>;
+  /**
+   * Consumer's repo cwd. Threaded into Bridge built-in custom functions so
+   * filesystem-bound checks (snapshot-exists, future KB-based functions)
+   * resolve paths relative to the right repo. Defaults to `process.cwd()`.
+   */
+  readonly cwd?: string;
+  /** Relative path to consumer KB, default "bridge-ds/knowledge-base". */
+  readonly kbPath?: string;
 }
 
 // In rulesets, the rule `id` is the record key, so callers may omit it from the
@@ -29,19 +37,22 @@ const SPECTRAL_SEVERITY: Record<Severity, number> = {
 // Today we resolve dynamically via string name; unknown names throw.
 const BUILTIN_FUNCTIONS = functions as unknown as Record<string, unknown>;
 
-function resolveFunction(name: string, customFunctions: ReadonlyArray<LoadedFunction>): unknown {
+function resolveFunction(
+  name: string,
+  customFunctions: ReadonlyArray<LoadedFunction>,
+  bridgeBuiltins: Record<string, unknown>
+): unknown {
   // 1. Consumer-loaded custom functions (highest priority — let consumers
-  //    override bridge stubs and stoplight builtins if they need to).
+  //    override bridge built-ins and stoplight builtins if they need to).
   const custom = customFunctions.find((f) => f.name === name);
   if (custom) return custom.fn;
 
-  // 2. Bridge built-in stubs (custom functions referenced by bridge:recommended).
-  //    These fail OPEN — they emit no diagnostics and warn once per name — so
-  //    consumers can extend the recommended preset without crashing on
-  //    "Unknown function" before real implementations land.
-  const stub = BRIDGE_BUILTIN_STUBS[name];
-  if (typeof stub === "function") {
-    return stub;
+  // 2. Bridge built-in functions (real impls + remaining v7.0 stubs).
+  //    Built per-invocation via `buildBridgeBuiltinFunctions(ctx)` so KB-bound
+  //    functions can close over cwd/kbPath. Stubs still fail OPEN (warn once).
+  const bridge = bridgeBuiltins[name];
+  if (typeof bridge === "function") {
+    return bridge;
   }
 
   // 3. Stoplight built-in functions (truthy, pattern, schema, ...).
@@ -50,7 +61,7 @@ function resolveFunction(name: string, customFunctions: ReadonlyArray<LoadedFunc
     throw new Error(
       `Unknown Spectral function "${name}". Built-in functions: ${Object.keys(BUILTIN_FUNCTIONS)
         .filter((k) => typeof BUILTIN_FUNCTIONS[k] === "function")
-        .concat(Object.keys(BRIDGE_BUILTIN_STUBS))
+        .concat(Object.keys(bridgeBuiltins))
         .concat(customFunctions.map((f) => f.name))
         .join(", ")}.`
     );
@@ -68,6 +79,13 @@ export async function runRulesAgainstDocument(
   opts: RunOptions
 ): Promise<LintResult> {
   const customFunctions = opts.customFunctions ?? [];
+  // Built once per invocation so KB-bound functions (B-2 follow-up) can close
+  // over per-cwd state without leaking globals. Lightweight today (5 closures
+  // + 5 stubs); KB-loaders will memoize against `ctx.cwd`.
+  const bridgeBuiltins = buildBridgeBuiltinFunctions({
+    cwd: opts.cwd ?? process.cwd(),
+    kbPath: opts.kbPath,
+  });
 
   // We serialize once and reuse the JSON string across per-rule Spectral
   // instances. Document is cheap to reconstruct and not safe to share across
@@ -94,10 +112,16 @@ export async function runRulesAgainstDocument(
         rules: {
           [id]: {
             description: rule.description,
+            // Spectral's default behavior is to use `rule.description` as the
+            // emitted message, dropping the function-provided message. We
+            // override with the `{{error}}` template so custom functions can
+            // communicate specifics (e.g. "French markers: ..., ..."). When a
+            // function returns no message, Spectral falls back to description.
+            message: "{{error}}",
             given: rule.given,
             then: {
               ...(rule.then.field !== undefined ? { field: rule.then.field } : {}),
-              function: resolveFunction(rule.then.function, customFunctions),
+              function: resolveFunction(rule.then.function, customFunctions, bridgeBuiltins),
               functionOptions: rule.then.functionOptions,
             },
             severity: SPECTRAL_SEVERITY[rule.severity],
