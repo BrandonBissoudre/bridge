@@ -1,5 +1,39 @@
 # Universal rules every Bridge DS should run.
 # Extend in consumer config via: `extends: [bridge:recommended]`
-extends: []
-rules:
-  # Populated by subagents in Task 11–13
+#
+# All 18 universal rules ship with @noemuch/bridge-ds@7.0.0:
+# - tokens (5): hex/spacing literal blockers, token ref resolution, DTCG
+#   compliance, deprecated-token warning
+# - structure (4): CSpec shape, required fields, snapshot colocation,
+#   bridge-api versioning
+# - naming (4): kebab filename, PascalCase component, lowercase variant
+#   values, Figma node-id property suffix
+# - interaction (2): no-hover-as-variant, interaction-tokens-must-be-float
+# - workflow (2): recipe-eligibility, ship-bundle-completeness
+# - copy (1): artifacts-english-only
+extends:
+  # tokens
+  - "../tokens/no-hardcoded-hex/rule.yaml"
+  - "../tokens/no-hardcoded-spacing-px/rule.yaml"
+  - "../tokens/token-refs-resolve/rule.yaml"
+  - "../tokens/dtcg-compliance/rule.yaml"
+  - "../tokens/no-deprecated-tokens/rule.yaml"
+  # structure
+  - "../structure/cspec-shape/rule.yaml"
+  - "../structure/spec-required-fields/rule.yaml"
+  - "../structure/snapshot-next-to-spec/rule.yaml"
+  - "../structure/bridge-api-versioned/rule.yaml"
+  # naming
+  - "../naming/spec-filename-kebab/rule.yaml"
+  - "../naming/component-name-pascal/rule.yaml"
+  - "../naming/variant-name-lowercase/rule.yaml"
+  - "../naming/property-key-suffix/rule.yaml"
+  # interaction
+  - "../interaction/no-hover-as-variant/rule.yaml"
+  - "../interaction/interaction-tokens-are-float/rule.yaml"
+  # workflow
+  - "../workflow/recipe-eligibility/rule.yaml"
+  - "../workflow/ship-bundle-completeness/rule.yaml"
+  # copy
+  - "../copy/artifacts-english-only/rule.yaml"
+rules: {}

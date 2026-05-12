@@ -1,4 +1,25 @@
 # Stricter severities — every rule promoted to its highest reasonable level.
-extends: [./recommended.yaml]
+# Use in consumer config via: `extends: [bridge:strict]` (replaces recommended).
+#
+# Strict mode upgrades warn → error on naming + interaction-tokens + dtcg-compliance,
+# and upgrades info → warn on recipe-eligibility. Hardware blockers
+# (no-hardcoded-*, token-refs-resolve, no-hover-as-variant, etc.) stay error.
+extends:
+  - "./recommended.yaml"
 rules:
-  # Severity overrides only; populated alongside recommended
+  # Promote warn → error
+  component-name-pascal:
+    severity: error
+  property-key-suffix:
+    severity: error
+  snapshot-next-to-spec:
+    severity: error
+  no-deprecated-tokens:
+    severity: error
+  dtcg-compliance:
+    severity: error
+  interaction-tokens-are-float:
+    severity: error
+  # Promote info → warn
+  recipe-eligibility:
+    severity: warn
